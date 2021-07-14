@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang=zh>
+<head>
+    <!-- so meta -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="HandheldFriendly" content="True">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+    <meta name="description" content="浏览器编解码与XSS bypass">
+<meta property="og:type" content="article">
+<meta property="og:title" content="浏览器解析机制与渲染过程">
+<meta property="og:url" content="http://yoursite.com/2020/03/10/%E6%B5%8F%E8%A7%88%E5%99%A8%E8%A7%A3%E6%9E%90%E6%9C%BA%E5%88%B6%E4%B8%8E%E6%B8%B2%E6%9F%93%E8%BF%87%E7%A8%8B/index.html">
+<meta property="og:site_name" content="M13n&#39;s Blog">
+<meta property="og:description" content="浏览器编解码与XSS bypass">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://yoursite.com/2020/03/10/%E6%B5%8F%E8%A7%88%E5%99%A8%E8%A7%A3%E6%9E%90%E6%9C%BA%E5%88%B6%E4%B8%8E%E6%B8%B2%E6%9F%93%E8%BF%87%E7%A8%8B/image-20201113201812123.png">
+<meta property="og:image" content="http://yoursite.com/2020/03/10/%E6%B5%8F%E8%A7%88%E5%99%A8%E8%A7%A3%E6%9E%90%E6%9C%BA%E5%88%B6%E4%B8%8E%E6%B8%B2%E6%9F%93%E8%BF%87%E7%A8%8B/image-20201113201822991.png">
+<meta property="og:image" content="http://yoursite.com/2020/03/10/%E6%B5%8F%E8%A7%88%E5%99%A8%E8%A7%A3%E6%9E%90%E6%9C%BA%E5%88%B6%E4%B8%8E%E6%B8%B2%E6%9F%93%E8%BF%87%E7%A8%8B/image-20201113201829531.png">
+<meta property="article:published_time" content="2020-03-10T13:14:01.000Z">
+<meta property="article:modified_time" content="2021-02-11T11:55:54.756Z">
+<meta property="article:author" content="M13n">
+<meta property="article:tag" content="XSS">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://yoursite.com/2020/03/10/%E6%B5%8F%E8%A7%88%E5%99%A8%E8%A7%A3%E6%9E%90%E6%9C%BA%E5%88%B6%E4%B8%8E%E6%B8%B2%E6%9F%93%E8%BF%87%E7%A8%8B/image-20201113201812123.png">
+    
+    
+        
+          
+              <link rel="shortcut icon" href="/images/favicon.ico">
+          
+        
+        
+          
+            <link rel="icon" type="image/png" href="/images/favicon-192x192.png" sizes="192x192">
+          
+        
+        
+          
+            <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png">
+          
+        
+    
+    <!-- title -->
+    <title>浏览器解析机制与渲染过程</title>
+    <!-- styles -->
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <!-- persian styles -->
+    
+      
+<link rel="stylesheet" href="/css/rtl.css">
+
+    
+    <!-- rss -->
+    
+    
+<meta name="generator" content="Hexo 5.4.0"></head>
+
+<body class="max-width mx-auto px3 ltr">
+    
+      <div id="header-post">
+  <a id="menu-icon" href="#"><i class="fas fa-bars fa-lg"></i></a>
+  <a id="menu-icon-tablet" href="#"><i class="fas fa-bars fa-lg"></i></a>
+  <a id="top-icon-tablet" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');" style="display:none;"><i class="fas fa-chevron-up fa-lg"></i></a>
+  <span id="menu">
+    <span id="nav">
+      <ul>
+         
+          <li><a href="/">首页</a></li>
+         
+          <li><a href="/archives/">文章</a></li>
+         
+          <li><a href="/search/">搜索</a></li>
+        
+      </ul>
+    </span>
+    <br/>
+    <span id="actions">
+      <ul>
+        
+        <li><a class="icon" href="/2020/11/21/ECShop-2-x-3-x-%E7%89%88%E6%9C%AC-RCE-%E5%A4%8D%E7%8E%B0%E5%88%86%E6%9E%90/"><i class="fas fa-chevron-left" aria-hidden="true" onmouseover="$('#i-prev').toggle();" onmouseout="$('#i-prev').toggle();"></i></a></li>
+        
+        
+        <li><a class="icon" href="/2020/03/01/Typecho%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/"><i class="fas fa-chevron-right" aria-hidden="true" onmouseover="$('#i-next').toggle();" onmouseout="$('#i-next').toggle();"></i></a></li>
+        
+        <li><a class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fas fa-chevron-up" aria-hidden="true" onmouseover="$('#i-top').toggle();" onmouseout="$('#i-top').toggle();"></i></a></li>
+        <li><a class="icon" href="#"><i class="fas fa-share-alt" aria-hidden="true" onmouseover="$('#i-share').toggle();" onmouseout="$('#i-share').toggle();" onclick="$('#share').toggle();return false;"></i></a></li>
+      </ul>
+      <span id="i-prev" class="info" style="display:none;">上一篇</span>
+      <span id="i-next" class="info" style="display:none;">下一篇</span>
+      <span id="i-top" class="info" style="display:none;">返回顶部</span>
+      <span id="i-share" class="info" style="display:none;">分享文章</span>
+    </span>
+    <br/>
+    <div id="share" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=http://yoursite.com/2020/03/10/%E6%B5%8F%E8%A7%88%E5%99%A8%E8%A7%A3%E6%9E%90%E6%9C%BA%E5%88%B6%E4%B8%8E%E6%B8%B2%E6%9F%93%E8%BF%87%E7%A8%8B/"><i class="fab fa-facebook " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=http://yoursite.com/2020/03/10/%E6%B5%8F%E8%A7%88%E5%99%A8%E8%A7%A3%E6%9E%90%E6%9C%BA%E5%88%B6%E4%B8%8E%E6%B8%B2%E6%9F%93%E8%BF%87%E7%A8%8B/&text=浏览器解析机制与渲染过程"><i class="fab fa-twitter " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=http://yoursite.com/2020/03/10/%E6%B5%8F%E8%A7%88%E5%99%A8%E8%A7%A3%E6%9E%90%E6%9C%BA%E5%88%B6%E4%B8%8E%E6%B8%B2%E6%9F%93%E8%BF%87%E7%A8%8B/&title=浏览器解析机制与渲染过程"><i class="fab fa-linkedin " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=http://yoursite.com/2020/03/10/%E6%B5%8F%E8%A7%88%E5%99%A8%E8%A7%A3%E6%9E%90%E6%9C%BA%E5%88%B6%E4%B8%8E%E6%B8%B2%E6%9F%93%E8%BF%87%E7%A8%8B/&is_video=false&description=浏览器解析机制与渲染过程"><i class="fab fa-pinterest " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=浏览器解析机制与渲染过程&body=Check out this article: http://yoursite.com/2020/03/10/%E6%B5%8F%E8%A7%88%E5%99%A8%E8%A7%A3%E6%9E%90%E6%9C%BA%E5%88%B6%E4%B8%8E%E6%B8%B2%E6%9F%93%E8%BF%87%E7%A8%8B/"><i class="fas fa-envelope " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=http://yoursite.com/2020/03/10/%E6%B5%8F%E8%A7%88%E5%99%A8%E8%A7%A3%E6%9E%90%E6%9C%BA%E5%88%B6%E4%B8%8E%E6%B8%B2%E6%9F%93%E8%BF%87%E7%A8%8B/&title=浏览器解析机制与渲染过程"><i class="fab fa-get-pocket " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=http://yoursite.com/2020/03/10/%E6%B5%8F%E8%A7%88%E5%99%A8%E8%A7%A3%E6%9E%90%E6%9C%BA%E5%88%B6%E4%B8%8E%E6%B8%B2%E6%9F%93%E8%BF%87%E7%A8%8B/&title=浏览器解析机制与渲染过程"><i class="fab fa-reddit " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=http://yoursite.com/2020/03/10/%E6%B5%8F%E8%A7%88%E5%99%A8%E8%A7%A3%E6%9E%90%E6%9C%BA%E5%88%B6%E4%B8%8E%E6%B8%B2%E6%9F%93%E8%BF%87%E7%A8%8B/&title=浏览器解析机制与渲染过程"><i class="fab fa-stumbleupon " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=http://yoursite.com/2020/03/10/%E6%B5%8F%E8%A7%88%E5%99%A8%E8%A7%A3%E6%9E%90%E6%9C%BA%E5%88%B6%E4%B8%8E%E6%B8%B2%E6%9F%93%E8%BF%87%E7%A8%8B/&title=浏览器解析机制与渲染过程"><i class="fab fa-digg " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=http://yoursite.com/2020/03/10/%E6%B5%8F%E8%A7%88%E5%99%A8%E8%A7%A3%E6%9E%90%E6%9C%BA%E5%88%B6%E4%B8%8E%E6%B8%B2%E6%9F%93%E8%BF%87%E7%A8%8B/&name=浏览器解析机制与渲染过程&description=&lt;p&gt;浏览器编解码与XSS bypass&lt;/p&gt;"><i class="fab fa-tumblr " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=http://yoursite.com/2020/03/10/%E6%B5%8F%E8%A7%88%E5%99%A8%E8%A7%A3%E6%9E%90%E6%9C%BA%E5%88%B6%E4%B8%8E%E6%B8%B2%E6%9F%93%E8%BF%87%E7%A8%8B/&t=浏览器解析机制与渲染过程"><i class="fab fa-hacker-news " aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+    <div id="toc">
+      <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%BA%8F%E7%AB%A0"><span class="toc-number">1.</span> <span class="toc-text">序章</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%B5%8F%E8%A7%88%E5%99%A8%E7%9A%84%E8%A7%A3%E7%A0%81"><span class="toc-number">2.</span> <span class="toc-text">浏览器的解码</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%B5%8F%E8%A7%88%E5%99%A8%E7%9A%84%E8%A7%A3%E7%A0%81%E8%A7%84%E5%88%99"><span class="toc-number">2.1.</span> <span class="toc-text">浏览器的解码规则</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#HTML-%E8%A7%A3%E6%9E%90"><span class="toc-number">2.2.</span> <span class="toc-text">HTML 解析</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#URL-%E8%A7%A3%E6%9E%90"><span class="toc-number">2.3.</span> <span class="toc-text">URL 解析</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#JavaScript-%E8%A7%A3%E6%9E%90"><span class="toc-number">2.4.</span> <span class="toc-text">JavaScript 解析</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Python-%E8%BD%AC%E7%A0%81%E8%84%9A%E6%9C%AC"><span class="toc-number">2.5.</span> <span class="toc-text">Python 转码脚本</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BB%8Epayload%E7%9C%8B%E8%A7%A3%E6%9E%90%E6%B5%81%E7%A8%8B"><span class="toc-number">2.6.</span> <span class="toc-text">从payload看解析流程</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%B5%8F%E8%A7%88%E5%99%A8%E6%B8%B2%E6%9F%93"><span class="toc-number">3.</span> <span class="toc-text">浏览器渲染</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%B5%8F%E8%A7%88%E5%99%A8%E7%9A%84%E5%91%88%E7%8E%B0%E5%BC%95%E6%93%8E"><span class="toc-number">3.1.</span> <span class="toc-text">浏览器的呈现引擎</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%A1%B5%E9%9D%A2%E5%91%88%E7%8E%B0%E5%8E%9F%E7%90%86"><span class="toc-number">3.2.</span> <span class="toc-text">页面呈现原理</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Webkit%E5%92%8CGecko%E7%9A%84%E6%B5%81%E7%A8%8B%E5%AF%B9%E6%AF%94"><span class="toc-number">3.3.</span> <span class="toc-text">Webkit和Gecko的流程对比</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%8F%82%E8%80%83%E9%93%BE%E6%8E%A5"><span class="toc-number">4.</span> <span class="toc-text">参考链接</span></a></li></ol>
+    </div>
+  </span>
+</div>
+
+    
+    <div class="content index py4">
+        
+        <article class="post" itemscope itemtype="http://schema.org/BlogPosting">
+  <header>
+    
+    <h1 class="posttitle" itemprop="name headline">
+        浏览器解析机制与渲染过程
+    </h1>
+
+
+
+    <div class="meta">
+      <span class="author" itemprop="author" itemscope itemtype="http://schema.org/Person">
+        <span itemprop="name">M13n's Blog</span>
+      </span>
+      
+    <div class="postdate">
+      
+        <time datetime="2020-03-10T13:14:01.000Z" itemprop="datePublished">2020-03-10</time>
+        
+      
+    </div>
+
+
+      
+    <div class="article-category">
+        <i class="fas fa-archive"></i>
+        <a class="category-link" href="/categories/Web-Sec/">Web Sec</a>
+    </div>
+
+
+      
+    <div class="article-tag">
+        <i class="fas fa-tag"></i>
+        <a class="tag-link-link" href="/tags/XSS/" rel="tag">XSS</a>
+    </div>
+
+
+    </div>
+  </header>
+  
+
+  <div class="content" itemprop="articleBody">
+    <p>浏览器编解码与XSS bypass</p>
+<span id="more"></span>
+
+<h2 id="序章"><a href="#序章" class="headerlink" title="序章"></a>序章</h2><p>论一张图打败你学 XSS 的信心。（转自微博<br><img src="/2020/03/10/%E6%B5%8F%E8%A7%88%E5%99%A8%E8%A7%A3%E6%9E%90%E6%9C%BA%E5%88%B6%E4%B8%8E%E6%B8%B2%E6%9F%93%E8%BF%87%E7%A8%8B/image-20201113201812123.png" alt="image-20201113201812123"></p>
+<p>附上 MDN DOM 事件参考: <a target="_blank" rel="noopener" href="https://developer.mozilla.org/zh-CN/docs/Web/Events">https://developer.mozilla.org/zh-CN/docs/Web/Events</a></p>
+<p>本文参考多篇文章，涉及相关晦涩难懂名词解释，术语解释。均是 CTRL c v 。属于只可意会不可言传的领域。其他的知识都会尽量经我口中阐述的简单一点。</p>
+<h2 id="浏览器的解码"><a href="#浏览器的解码" class="headerlink" title="浏览器的解码"></a>浏览器的解码</h2><h3 id="浏览器的解码规则"><a href="#浏览器的解码规则" class="headerlink" title="浏览器的解码规则"></a>浏览器的解码规则</h3><ul>
+<li>HTML解析器对HTML文档进行解析完成HTML解码并且创建DOM树</li>
+<li>javascript 或者 CSS解析器对内联脚本进行解析，完成JS CSS解码</li>
+<li>URL解码会根据URL所在的顺序不同而在JS解码前或者解码后</li>
+</ul>
+<p>当浏览器从网络堆栈中获得一段内容后，触发HTML解析器来对这篇文档进行词法解析。在这一步中字符引用被解码。在词法解析完成后，DOM树就被创建好了，JavaScript解析器会介入来对内联脚本进行解析。在这一步中Unicode转义序列和Hex转义序列被解码。同时，如果浏览器遇到需要URL的上下文，URL解析器也会介入来解码URL内容。在这一步中URL解码操作被完成。由于URL位置不同，URL解析器可能会在JavaScript解析器之前或之后进行解析。</p>
+<figure class="highlight html"><table><tr><td class="code"><pre><span class="line">Example A: <span class="tag">&lt;<span class="name">a</span> <span class="attr">href</span>=<span class="string">&quot;UserInput&quot;</span>&gt;</span><span class="tag">&lt;/<span class="name">a</span>&gt;</span></span><br><span class="line">Example B: <span class="tag">&lt;<span class="name">a</span> <span class="attr">href</span>=<span class="string">#</span> <span class="attr">onclick</span>=<span class="string">&quot;window.open(&#x27;UserInput&#x27;)&quot;</span>&gt;</span><span class="tag">&lt;/<span class="name">a</span>&gt;</span></span><br><span class="line">Example C: <span class="tag">&lt;<span class="name">a</span> <span class="attr">href</span>=<span class="string">&quot;javascript:window.open(&#x27;UserInput&#x27;)&quot;</span>&gt;</span></span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>在例A中，HTML解析器将首先开始工作，并对UserInput中的字符引用进行解码。然后URL解析器开始对href值进行URL解码。最后，如果URL资源类型是JavaScript，那么JavaScript解析器会进行Unicode转义序列和Hex转义序列的解码。再之后，解码的脚本会被执行。因此，这里涉及三轮解码，顺序是HTML，URL和JavaScript。</p>
+</blockquote>
+<blockquote>
+<p>在例B中，HTML解析器首先工作。然而接下来，JavaScript解析器开始解析在onclick事件处理器中的值。这是因为在onclick事件处理器中是script的上下文。当这段JavaScript被解析并被执行的时候，它执行的是“window.open()”操作，其中的参数是URL的上下文。在此时，URL解析器开始对UserInput进行URL解码并把结果回传给JavaScript引擎。因此这里一共涉及三轮解码，顺序是HTML，JavaScript和URL。</p>
+</blockquote>
+<blockquote>
+<p>例C与例A很像，但不同的是在UserInput前多了window.open()操作。因此，对UserInput多了一次额外的URL解码操作。总的来说，四轮解码操作被完成，顺序是HTML，URL，JavaScript和URL。</p>
+</blockquote>
+<h3 id="HTML-解析"><a href="#HTML-解析" class="headerlink" title="HTML 解析"></a>HTML 解析</h3><p>概括 HTML 中五类元素。详细可直接参考HTML5 语法<br><a target="_blank" rel="noopener" href="https://www.w3.org/html/ig/zh/wiki/HTML5/syntax">https://www.w3.org/html/ig/zh/wiki/HTML5/syntax</a></p>
+<ol>
+<li>空元素: 空一字体现在不能容纳内容。一般的标签由 <code>&lt;start&gt;content&lt;/end&gt;</code>这样组成。空元素意味着没有闭合标签的标签。如: <code>&lt;area&gt;</code>,<code>&lt;br&gt;</code>,<code>&lt;base&gt;</code></li>
+<li>原始文本元素: 可以容纳内容。 <code>&lt;script&gt;</code>和<code>&lt;style&gt;</code>。</li>
+<li>RCDATA元素，可以容纳文本和字符引用。<code>&lt;textarea&gt;</code>和<code>&lt;title&gt;</code></li>
+<li>外部元素，可以容纳文本、字符引用、CDATA段、其他元素和注释: 如 MathML命名空间或者SVG命名空间的元素</li>
+<li>基本元素，可以容纳文本、字符引用、其他元素和注释: 除了以上4种元素以外的元素</li>
+</ol>
+<p>上面的内容我提炼了较为陌生的专业术语</p>
+<ul>
+<li>字符引用</li>
+<li>RCDATA</li>
+<li>外部元素</li>
+</ul>
+<p>什么是字符引用？<br>字符引用包括“字符值引用”和“字符实体引用”。如在HTML中，<code>&lt;</code>对应的字符值引用为<code>&amp;#60;</code>，对应的字符实体引用为<code>&amp;lt;</code>。字符实体引用也被叫做“实体引用”或“实体”<br>——》再次延伸概念: 字符实体<br>字符实体是一个转义序列，它定义了一般无法在文本内容中输入的单个字符或符号。一个字符实体以一个<code>&amp;</code>符号开始，后面跟着一个预定义的实体的名称，或是一个<code>#</code>符号以及字符的十进制数字。<br>——》产生问题: 为啥我要用字符实体呢，要经过转义这么麻烦的操作 ——〉HTML字符实体<br>在HTML中，某些字符是预留的。例如在HTML中不能使用“&lt;”或“&gt;”，这是因为浏览器可能误认为它们是标签的开始或结束。如果希望正确地显示预留字符，就需要在HTML中使用对应的字符实体。</p>
+<p>外部元素容纳种类的比空元素、原始文本元素多，有什么用呢？<br>Foreign elements ——》 SVG黑魔法<br><code>&lt;svg&gt;&lt;script&gt;alert&amp;#40;1)&lt;/script&gt;</code> 这个payload能执行的原因是因为 <code>&lt;svg&gt;</code> 遵循XML和SVG的定义。在XML中，<code>&amp;#40;</code>会被解析成 <code>（</code>。同理 <code>&lt;svg&gt;&lt;script&gt;alert&amp;#x28;1);&lt;/script&gt;</code> 也可以造成 XSS<br>tips: 在XML中实体会自动转义,除了<code>&lt;![CDATA[</code>和<code>]]&gt;</code>包含的实体</p>
+<p>下面开始进入HTML解析过程…</p>
+<p>一个HTML解析器作为一个状态机，HTML解析器有很多种状态。进行状态转换的方式是从输入流中获取字符并按照转换规则转换。以 <code>&lt;start&gt;content&lt;/end&gt;</code> 为例子。HTML识别开始和结束标签的核心是 <code>/</code> 符号。当HTML解析器遇到 <code>&lt;</code>  且没有 <code>/</code> 。就会进入 <strong>标签开始状态</strong> 然后转变到 <strong>标签名状态</strong>， <strong>前属性名状态</strong> … 最后进入 <strong>数据状态</strong>。 并释放当前标签的token。当解析器处于<strong>数据状态</strong>时，它会继续解析，每当发现一个完整的标签，就会释放出一个token。</p>
+<p>容纳字符实体的作用: 在这些状态中HTML字符实体将会从 <code>&amp;#...</code>形式解码。三种情况可以容纳字符实体： <strong>数据状态中的字符引用</strong>，<strong>RCDATA状态中的字符引用</strong>和<strong>属性值状态中的字符引用</strong>。</p>
+<p>有一种可以容纳字符引用的情况是 <strong>RCDATA状态中的字符引用</strong>。这意味着在<code>&lt;textarea&gt;</code>和<code>&lt;title&gt;</code>标签中的字符引用会被HTML解析器解码。且在解析这些字符引用的过程中不会进入 <strong>标签开始状态</strong> 。对RCDATA有个特殊的情况。在浏览器解析RCDATA元素的过程中，解析器会进入 <strong>RCDATA状态</strong>。在这个状态中，如果遇到<code>&lt;</code>字符，它会转换到RCDATA小于号状态。如果&lt;字符后没有紧跟着/和对应的标签名，解析器会转换回RCDATA状态。这意味着在RCDATA元素标签的内容中（例如<code>&lt;textarea&gt;</code>或<code>&lt;title&gt;</code>的内容中），唯一能够被解析器认做是标签的就是<code>&lt;/textarea&gt;</code>或者<code>&lt;/title&gt;</code>。当然，这要看开始标签是哪一个。因此，在<code>&lt;textarea&gt;</code>和<code>&lt;title&gt;</code>的内容中不会创建标签，不会有脚本执行。</p>
+<h3 id="URL-解析"><a href="#URL-解析" class="headerlink" title="URL 解析"></a>URL 解析</h3><p>URL资源类型必须是ASCII字母<code>（U+0041-U+005A || U+0061-U+007A）</code>，不然就会进入“无类型”状态。例如，你不能对协议类型进行任何的编码操作，不然URL解析器会认为它无类型。</p>
+<h3 id="JavaScript-解析"><a href="#JavaScript-解析" class="headerlink" title="JavaScript 解析"></a>JavaScript 解析</h3><p>Unicode转义序列只有在标识符名称里不被当作字符串，也只有在标识符名称里的编码字符能够被正常的解析。javascript解码器无法试别编码后的控制字符，比如：单引号，双引号和圆括号，之后会用一些例子进行详细说明。</p>
+<h3 id="Python-转码脚本"><a href="#Python-转码脚本" class="headerlink" title="Python 转码脚本"></a>Python 转码脚本</h3><p>自己最近在写一个XSS的扫描脚本，其中一个模块具有判断 XSS payload 的有效性的功能。这里给出部分转码片段</p>
+<figure class="highlight python"><table><tr><td class="code"><pre><span class="line"><span class="keyword">import</span> html</span><br><span class="line"><span class="keyword">import</span> re</span><br><span class="line"><span class="keyword">from</span> urllib.parse <span class="keyword">import</span> unquote</span><br><span class="line"></span><br><span class="line">payload = <span class="string">&#x27;&#x27;</span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">decodeHTML</span>():</span></span><br><span class="line">    dh = html.unescape()</span><br><span class="line">    <span class="keyword">return</span> dh</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">decodeURL</span>():</span></span><br><span class="line">    du = unquote()</span><br><span class="line">    <span class="keyword">return</span> du</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">decodeUnicode</span>(<span class="params">payload</span>):</span></span><br><span class="line">    duni = payload.encode(<span class="string">&#x27;utf-8&#x27;</span>).decode(<span class="string">&#x27;unicode_escape&#x27;</span>)</span><br><span class="line">    <span class="keyword">return</span> duni</span><br></pre></td></tr></table></figure>
+
+<h3 id="从payload看解析流程"><a href="#从payload看解析流程" class="headerlink" title="从payload看解析流程"></a>从payload看解析流程</h3><p>1、</p>
+<figure class="highlight html"><table><tr><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">a</span> <span class="attr">href</span>=<span class="string">&quot;%6a%61%76%61%73%63%72%69%70%74:%61%6c%65%72%74%28%31%29&quot;</span>&gt;</span><span class="tag">&lt;/<span class="name">a</span>&gt;</span></span><br></pre></td></tr></table></figure>
+<p>不弹窗， 原因: 识别到 href ，属性值状态中的字符引用。进入url模块解析。URL规定协议，用户名，密码都必须是ASCII。且不能对协议类型进行任何的编码操作。这里的 <code>javascript</code> 协议无法识别。</p>
+<p>2、</p>
+<figure class="highlight html"><table><tr><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">a</span> <span class="attr">href</span>=<span class="string">&quot;<span class="symbol">&amp;#x6a;</span><span class="symbol">&amp;#x61;</span><span class="symbol">&amp;#x76;</span><span class="symbol">&amp;#x61;</span><span class="symbol">&amp;#x73;</span><span class="symbol">&amp;#x63;</span><span class="symbol">&amp;#x72;</span><span class="symbol">&amp;#x69;</span><span class="symbol">&amp;#x70;</span><span class="symbol">&amp;#x74;</span>:%61%6c%65%72%74%28%32%29&quot;</span>&gt;</span></span><br></pre></td></tr></table></figure>
+
+<p>弹窗， 原因: 属性值状态中的字符引用。识别到实体化编码内容，进入html解码得到 <code>&lt;a href=&quot;javascript:%61%6c%65%72%74%28%32%29&quot;&gt;</code>。然后进入 URL 解析。此时可正确识别协议类型。解码得到<code> &lt;a href=&quot;javascript:alert(2)&quot;&gt;</code> 最后 JavaScript 解析。</p>
+<p>3、</p>
+<figure class="highlight html"><table><tr><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">a</span> <span class="attr">href</span>=<span class="string">&quot;javascript%3aalert(3)&quot;</span>&gt;</span><span class="tag">&lt;/<span class="name">a</span>&gt;</span></span><br></pre></td></tr></table></figure>
+
+<p>不弹窗， 原因同一， 这里 <code>javascript:</code> 为协议，任何一部分内容都不能编码</p>
+<p>4、</p>
+<figure class="highlight html"><table><tr><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">div</span>&gt;</span><span class="symbol">&amp;#60;</span>img src=x onerror=alert(4)<span class="symbol">&amp;#62;</span><span class="tag">&lt;/<span class="name">div</span>&gt;</span></span><br></pre></td></tr></table></figure>
+<p>不弹窗， 原因: 属性值状态中的字符引用，先进行 HTML 解析。但 HTML 解析机制中<code>&amp;#60;</code>会被 HTML 解码，但不会进入标签开始状态，当然也就不会创建 img 元素。(HTML编码就是为了显示这些特殊字符，而不干扰正常的DOM解析)</p>
+<p>5、</p>
+<figure class="highlight html"><table><tr><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">textarea</span>&gt;</span><span class="symbol">&amp;#60;</span>script<span class="symbol">&amp;#62;</span>alert(5)<span class="symbol">&amp;#60;</span>/script<span class="symbol">&amp;#62;</span><span class="tag">&lt;/<span class="name">textarea</span>&gt;</span></span><br></pre></td></tr></table></figure>
+<p>不弹窗， 原因为: <code>&lt;textarea&gt;</code>是RCDATA元素，可以容纳文本和字符引用，注意不能容纳其他元素，HTML解码得到<code>&lt;textarea&gt;&lt;script&gt;alert(5)&lt;/script&gt;&lt;/textarea&gt;</code>但 <code>&lt;textarea&gt; </code>只容纳文本和字符引用。因此js无法执行</p>
+<p>6、</p>
+<figure class="highlight html"><table><tr><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">textarea</span>&gt;</span><span class="tag">&lt;<span class="name">script</span>&gt;</span>alert(6)<span class="tag">&lt;/<span class="name">script</span>&gt;</span><span class="tag">&lt;/<span class="name">textarea</span>&gt;</span></span><br></pre></td></tr></table></figure>
+<p>不弹窗， 原因同5</p>
+<p>7、</p>
+<figure class="highlight html"><table><tr><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">button</span> <span class="attr">onclick</span>=<span class="string">&quot;confirm(&#x27;7<span class="symbol">&amp;#39;</span>);&quot;</span>&gt;</span>Button<span class="tag">&lt;/<span class="name">button</span>&gt;</span></span><br></pre></td></tr></table></figure>
+<p>弹窗， 原因: 属性值状态中的字符引用，先进行HTML解码。然后JS执行</p>
+<p>8、</p>
+<figure class="highlight html"><table><tr><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">button</span> <span class="attr">onclick</span>=<span class="string">&quot;confirm(&#x27;8\u0027);&quot;</span>&gt;</span>Button<span class="tag">&lt;/<span class="name">button</span>&gt;</span></span><br></pre></td></tr></table></figure>
+<p>不弹窗， 原因: 在JavaScript中，标识符只能包含字母或数字或下划线（“<code>_</code>”）或美元符号（“<code>$</code>”），且不能以数字开头。 <code>onclick</code>中的值会交给JS处理，在JS中只有字符串和标识符能用Unicode表示，<code>&#39;</code>显然不行，JS执行失败。</p>
+<p>9、</p>
+<figure class="highlight html"><table><tr><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">script</span>&gt;</span><span class="handlebars"><span class="xml"><span class="symbol">&amp;#97;</span><span class="symbol">&amp;#108;</span><span class="symbol">&amp;#101;</span><span class="symbol">&amp;#114;</span>&amp;#116<span class="symbol">&amp;#40;</span><span class="symbol">&amp;#57;</span><span class="symbol">&amp;#41;</span>&amp;#59</span></span><span class="tag">&lt;/<span class="name">script</span>&gt;</span></span><br></pre></td></tr></table></figure>
+<p>不弹窗， 原因: <code>script</code>标签属于原始文本元素。无法容纳字符引用，所以无法进行HTML解码。因此JS解析时并不能执行弹窗</p>
+<p>10、</p>
+<figure class="highlight html"><table><tr><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">script</span>&gt;</span>\u0061\u006c\u0065\u0072\u0074(10);<span class="tag">&lt;/<span class="name">script</span>&gt;</span></span><br></pre></td></tr></table></figure>
+<p>弹窗， 原因: 直接进入 JavaScript 解析。且发现unicode编码，其为 alert 标识符进行编码后的字符串。所以能先解码，然后执行</p>
+<p>11、</p>
+<figure class="highlight html"><table><tr><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">script</span>&gt;</span>\u0061\u006c\u0065\u0072\u0074\u0028\u0031\u0031\u0029<span class="tag">&lt;/<span class="name">script</span>&gt;</span></span><br></pre></td></tr></table></figure>
+<p>不弹窗， 原因同8: 出现括号进行了unicode编码，JS无法识别编码后的控制字符</p>
+<p>12、</p>
+<figure class="highlight html"><table><tr><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">script</span>&gt;</span>\u0061\u006c\u0065\u0072\u0074(\u0031\u0032)<span class="tag">&lt;/<span class="name">script</span>&gt;</span></span><br></pre></td></tr></table></figure>
+<p>不弹窗， 其实个人最开始看到payload是感觉能弹窗的，后来参考了别人的思路。发现<code>\u0031\u0032</code>在解码的时候会被解码为字符串12。需要引号包裹。因此不执行JS</p>
+<p>13、</p>
+<figure class="highlight html"><table><tr><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">script</span>&gt;</span>alert(&#x27;13\u0027)<span class="tag">&lt;/<span class="name">script</span>&gt;</span></span><br></pre></td></tr></table></figure>
+<p>不弹窗，原因同8: 出现单引号进行了unicode编码，JS无法识别编码后的控制字符</p>
+<p>14、</p>
+<figure class="highlight html"><table><tr><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">script</span>&gt;</span><span class="javascript">alert(<span class="string">&#x27;14\u000a&#x27;</span>)</span><span class="tag">&lt;/<span class="name">script</span>&gt;</span></span><br></pre></td></tr></table></figure>
+<p>弹窗。原因: <code>\u000a</code>在JavaScript里是换行，就是<code>\n</code>，直接执行</p>
+<p>组合拳:</p>
+<figure class="highlight html"><table><tr><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">a</span> <span class="attr">href</span>=<span class="string">&quot;<span class="symbol">&amp;#x6a;</span><span class="symbol">&amp;#x61;</span><span class="symbol">&amp;#x76;</span><span class="symbol">&amp;#x61;</span><span class="symbol">&amp;#x73;</span><span class="symbol">&amp;#x63;</span><span class="symbol">&amp;#x72;</span><span class="symbol">&amp;#x69;</span><span class="symbol">&amp;#x70;</span><span class="symbol">&amp;#x74;</span><span class="symbol">&amp;#x3a;</span><span class="symbol">&amp;#x25;</span><span class="symbol">&amp;#x35;</span><span class="symbol">&amp;#x63;</span><span class="symbol">&amp;#x25;</span><span class="symbol">&amp;#x37;</span><span class="symbol">&amp;#x35;</span><span class="symbol">&amp;#x25;</span><span class="symbol">&amp;#x33;</span><span class="symbol">&amp;#x30;</span><span class="symbol">&amp;#x25;</span><span class="symbol">&amp;#x33;</span><span class="symbol">&amp;#x30;</span><span class="symbol">&amp;#x25;</span><span class="symbol">&amp;#x33;</span><span class="symbol">&amp;#x36;</span><span class="symbol">&amp;#x25;</span><span class="symbol">&amp;#x33;</span><span class="symbol">&amp;#x31;</span><span class="symbol">&amp;#x25;</span><span class="symbol">&amp;#x35;</span><span class="symbol">&amp;#x63;</span><span class="symbol">&amp;#x25;</span><span class="symbol">&amp;#x37;</span><span class="symbol">&amp;#x35;</span><span class="symbol">&amp;#x25;</span><span class="symbol">&amp;#x33;</span><span class="symbol">&amp;#x30;</span><span class="symbol">&amp;#x25;</span><span class="symbol">&amp;#x33;</span><span class="symbol">&amp;#x30;</span><span class="symbol">&amp;#x25;</span><span class="symbol">&amp;#x33;</span><span class="symbol">&amp;#x36;</span><span class="symbol">&amp;#x25;</span><span class="symbol">&amp;#x36;</span><span class="symbol">&amp;#x33;</span><span class="symbol">&amp;#x25;</span><span class="symbol">&amp;#x35;</span><span class="symbol">&amp;#x63;</span><span class="symbol">&amp;#x25;</span><span class="symbol">&amp;#x37;</span><span class="symbol">&amp;#x35;</span><span class="symbol">&amp;#x25;</span><span class="symbol">&amp;#x33;</span><span class="symbol">&amp;#x30;</span><span class="symbol">&amp;#x25;</span><span class="symbol">&amp;#x33;</span><span class="symbol">&amp;#x30;</span><span class="symbol">&amp;#x25;</span><span class="symbol">&amp;#x33;</span><span class="symbol">&amp;#x36;</span><span class="symbol">&amp;#x25;</span><span class="symbol">&amp;#x33;</span><span class="symbol">&amp;#x35;</span><span class="symbol">&amp;#x25;</span><span class="symbol">&amp;#x35;</span><span class="symbol">&amp;#x63;</span><span class="symbol">&amp;#x25;</span><span class="symbol">&amp;#x37;</span><span class="symbol">&amp;#x35;</span><span class="symbol">&amp;#x25;</span><span class="symbol">&amp;#x33;</span><span class="symbol">&amp;#x30;</span><span class="symbol">&amp;#x25;</span><span class="symbol">&amp;#x33;</span><span class="symbol">&amp;#x30;</span><span class="symbol">&amp;#x25;</span><span class="symbol">&amp;#x33;</span><span class="symbol">&amp;#x37;</span><span class="symbol">&amp;#x25;</span><span class="symbol">&amp;#x33;</span><span class="symbol">&amp;#x32;</span><span class="symbol">&amp;#x25;</span><span class="symbol">&amp;#x35;</span><span class="symbol">&amp;#x63;</span><span class="symbol">&amp;#x25;</span><span class="symbol">&amp;#x37;</span><span class="symbol">&amp;#x35;</span><span class="symbol">&amp;#x25;</span><span class="symbol">&amp;#x33;</span><span class="symbol">&amp;#x30;</span><span class="symbol">&amp;#x25;</span><span class="symbol">&amp;#x33;</span><span class="symbol">&amp;#x30;</span><span class="symbol">&amp;#x25;</span><span class="symbol">&amp;#x33;</span><span class="symbol">&amp;#x37;</span><span class="symbol">&amp;#x25;</span><span class="symbol">&amp;#x33;</span><span class="symbol">&amp;#x34;</span><span class="symbol">&amp;#x28;</span><span class="symbol">&amp;#x31;</span><span class="symbol">&amp;#x35;</span><span class="symbol">&amp;#x29;</span>&quot;</span>&gt;</span><span class="tag">&lt;/<span class="name">a</span>&gt;</span></span><br></pre></td></tr></table></figure>
+
+<p>先进行HTML解码得 </p>
+<figure class="highlight html"><table><tr><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">a</span> <span class="attr">href</span>=<span class="string">&quot;javascript:%5c%75%30%30%36%31%5c%75%30%30%36%63%5c%75%30%30%36%35%5c%75%30%30%37%32%5c%75%30%30%37%34(15)&quot;</span>&gt;</span><span class="tag">&lt;/<span class="name">a</span>&gt;</span></span><br></pre></td></tr></table></figure>
+<p>然后进入 URL 模块处理，发现完整 <code>javascript:</code> 协议，进行URL解码。得<code>javascript:\u0061\u006c\u0065\u0072\u0074(15)</code><br>控制字符 <code>()</code>未被unicode编码，因此进行 JavaScript 解码，成功弹窗</p>
+<h2 id="浏览器渲染"><a href="#浏览器渲染" class="headerlink" title="浏览器渲染"></a>浏览器渲染</h2><h3 id="浏览器的呈现引擎"><a href="#浏览器的呈现引擎" class="headerlink" title="浏览器的呈现引擎"></a>浏览器的呈现引擎</h3><p>呈现引擎默认可以解析html文档、xml文档以及图片等资源并将解析后的内容展示给用户。通过各种插件（浏览器扩展程序）浏览器还可以展示其他各类型的web资源，如pdf插件可以让浏览器展示pdf文档。不同浏览器使用的呈现引擎也不一样，目前主流的呈现引擎有Webkit、Blink(Webkit的一个分支)、Gecko、Trident、EdgeHTML(Trident的一个分支)。</p>
+<table>
+<thead>
+<tr>
+<th align="center">浏览器</th>
+<th align="center">呈现引擎</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center">Chrome</td>
+<td align="center">Blink（Chrome 28+）<br> Webkit（Chrome 27-）</td>
+</tr>
+<tr>
+<td align="center">Safari</td>
+<td align="center">Webkit</td>
+</tr>
+<tr>
+<td align="center">Firefox</td>
+<td align="center">Gecko</td>
+</tr>
+<tr>
+<td align="center">Edge</td>
+<td align="center">EdgeHTML</td>
+</tr>
+<tr>
+<td align="center">IE</td>
+<td align="center">Trident</td>
+</tr>
+</tbody></table>
+<h3 id="页面呈现原理"><a href="#页面呈现原理" class="headerlink" title="页面呈现原理"></a>页面呈现原理</h3><p>当我们点击一个链接，服务器将 HTML 代码传输到我们的浏览器，浏览器在接收到这份 HTML 代码之后进行的页面的呈现，粗略的说会经过以下这些步骤：</p>
+<ol>
+<li>DOM 树的构建（Parse HTML）</li>
+<li>构建 CSSOM 树（Recaculate Style）</li>
+<li>合并 DOM 树与 CSSOM 树为 Render 树</li>
+<li>布局（Layout）</li>
+<li>绘制（Paint）</li>
+<li>复合图层化（Composite）</li>
+</ol>
+<p>页面呈现过程中的阻塞</p>
+<ol>
+<li>当遇到 JavaScript 脚本或者外部 JavaScript 代码时，浏览器便停止 DOM 的构建（阻塞 1）</li>
+<li>当遇到 <code>&lt;script&gt;</code> 标签需要执行脚本代码时，浏览器会检查是否这个 <code>&lt;script&gt;</code> 标签以上的 CSS 文件是否已经加载并用于构建了 CSSOM，如果 <code>&lt;script&gt;</code> 上部还有 CSS 样式没加载，则浏览器会等待 <code>&lt;script&gt;</code> 上方样式的加载完成才会执行该 <code>&lt;script&gt;</code> 内的脚本（阻塞 2）</li>
+<li>DOM 树与 CSSOM 树的成功构建是后面步骤的根基（同步阻塞）</li>
+<li>同时外部脚本、外部样式表的下载也是耗费时间较多的点</li>
+</ol>
+<h3 id="Webkit和Gecko的流程对比"><a href="#Webkit和Gecko的流程对比" class="headerlink" title="Webkit和Gecko的流程对比"></a>Webkit和Gecko的流程对比</h3><p>Webkit的主要流程（图片摘自Tali Garsiel的研究成果)<br><img src="/2020/03/10/%E6%B5%8F%E8%A7%88%E5%99%A8%E8%A7%A3%E6%9E%90%E6%9C%BA%E5%88%B6%E4%B8%8E%E6%B8%B2%E6%9F%93%E8%BF%87%E7%A8%8B/image-20201113201822991.png" alt="image-20201113201822991"></p>
+<p>Gecko的主要流程（图片摘自Tali Garsiel的研究成果）<br><img src="/2020/03/10/%E6%B5%8F%E8%A7%88%E5%99%A8%E8%A7%A3%E6%9E%90%E6%9C%BA%E5%88%B6%E4%B8%8E%E6%B8%B2%E6%9F%93%E8%BF%87%E7%A8%8B/image-20201113201829531.png" alt="image-20201113201829531"></p>
+<h2 id="参考链接"><a href="#参考链接" class="headerlink" title="参考链接"></a>参考链接</h2><p><a target="_blank" rel="noopener" href="https://lihuaiqiu.github.io/2020/02/14/%E4%BB%8E%E6%B5%8F%E8%A7%88%E5%99%A8%E6%B8%B2%E6%9F%93%E4%B8%8E%E8%A7%A3%E7%A0%81%E5%8E%9F%E7%90%86%E9%87%8D%E6%96%B0%E8%AE%A4%E8%AF%86xss/#more">从浏览器渲染与解码原理重新认识xss</a><br><a target="_blank" rel="noopener" href="https://xz.aliyun.com/t/5863#toc-4">浏览器解码看XSS</a><br><a target="_blank" rel="noopener" href="http://bobao.360.cn/learning/detail/292.html">深入理解浏览器解析机制和XSS向量编码</a><br><a target="_blank" rel="noopener" href="https://www.html5rocks.com/zh/tutorials/internals/howbrowserswork/#The_browsers_we_will_talk_about">浏览器的工作原理：新式网络浏览器幕后揭秘</a><br><a target="_blank" rel="noopener" href="https://www.zybuluo.com/yangfch3/note/671516">浏览器内核、JS 引擎、页面呈现原理及其优化</a><br><a target="_blank" rel="noopener" href="https://zhuanlan.zhihu.com/p/24911872?refer=dreawer">从Chrome源码看浏览器如何构建DOM树</a><br><a target="_blank" rel="noopener" href="https://www.cnblogs.com/imwtr/p/4481092.html">不同内核浏览器的差异以及浏览器渲染简介</a></p>
+
+  </div>
+</article>
+
+
+
+        
+          <div id="footer-post-container">
+  <div id="footer-post">
+
+    <div id="nav-footer" style="display: none">
+      <ul>
+         
+          <li><a href="/">首页</a></li>
+         
+          <li><a href="/archives/">文章</a></li>
+         
+          <li><a href="/search/">搜索</a></li>
+        
+      </ul>
+    </div>
+
+    <div id="toc-footer" style="display: none">
+      <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%BA%8F%E7%AB%A0"><span class="toc-number">1.</span> <span class="toc-text">序章</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%B5%8F%E8%A7%88%E5%99%A8%E7%9A%84%E8%A7%A3%E7%A0%81"><span class="toc-number">2.</span> <span class="toc-text">浏览器的解码</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%B5%8F%E8%A7%88%E5%99%A8%E7%9A%84%E8%A7%A3%E7%A0%81%E8%A7%84%E5%88%99"><span class="toc-number">2.1.</span> <span class="toc-text">浏览器的解码规则</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#HTML-%E8%A7%A3%E6%9E%90"><span class="toc-number">2.2.</span> <span class="toc-text">HTML 解析</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#URL-%E8%A7%A3%E6%9E%90"><span class="toc-number">2.3.</span> <span class="toc-text">URL 解析</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#JavaScript-%E8%A7%A3%E6%9E%90"><span class="toc-number">2.4.</span> <span class="toc-text">JavaScript 解析</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Python-%E8%BD%AC%E7%A0%81%E8%84%9A%E6%9C%AC"><span class="toc-number">2.5.</span> <span class="toc-text">Python 转码脚本</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BB%8Epayload%E7%9C%8B%E8%A7%A3%E6%9E%90%E6%B5%81%E7%A8%8B"><span class="toc-number">2.6.</span> <span class="toc-text">从payload看解析流程</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%B5%8F%E8%A7%88%E5%99%A8%E6%B8%B2%E6%9F%93"><span class="toc-number">3.</span> <span class="toc-text">浏览器渲染</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%B5%8F%E8%A7%88%E5%99%A8%E7%9A%84%E5%91%88%E7%8E%B0%E5%BC%95%E6%93%8E"><span class="toc-number">3.1.</span> <span class="toc-text">浏览器的呈现引擎</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%A1%B5%E9%9D%A2%E5%91%88%E7%8E%B0%E5%8E%9F%E7%90%86"><span class="toc-number">3.2.</span> <span class="toc-text">页面呈现原理</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Webkit%E5%92%8CGecko%E7%9A%84%E6%B5%81%E7%A8%8B%E5%AF%B9%E6%AF%94"><span class="toc-number">3.3.</span> <span class="toc-text">Webkit和Gecko的流程对比</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%8F%82%E8%80%83%E9%93%BE%E6%8E%A5"><span class="toc-number">4.</span> <span class="toc-text">参考链接</span></a></li></ol>
+    </div>
+
+    <div id="share-footer" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=http://yoursite.com/2020/03/10/%E6%B5%8F%E8%A7%88%E5%99%A8%E8%A7%A3%E6%9E%90%E6%9C%BA%E5%88%B6%E4%B8%8E%E6%B8%B2%E6%9F%93%E8%BF%87%E7%A8%8B/"><i class="fab fa-facebook fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=http://yoursite.com/2020/03/10/%E6%B5%8F%E8%A7%88%E5%99%A8%E8%A7%A3%E6%9E%90%E6%9C%BA%E5%88%B6%E4%B8%8E%E6%B8%B2%E6%9F%93%E8%BF%87%E7%A8%8B/&text=浏览器解析机制与渲染过程"><i class="fab fa-twitter fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=http://yoursite.com/2020/03/10/%E6%B5%8F%E8%A7%88%E5%99%A8%E8%A7%A3%E6%9E%90%E6%9C%BA%E5%88%B6%E4%B8%8E%E6%B8%B2%E6%9F%93%E8%BF%87%E7%A8%8B/&title=浏览器解析机制与渲染过程"><i class="fab fa-linkedin fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=http://yoursite.com/2020/03/10/%E6%B5%8F%E8%A7%88%E5%99%A8%E8%A7%A3%E6%9E%90%E6%9C%BA%E5%88%B6%E4%B8%8E%E6%B8%B2%E6%9F%93%E8%BF%87%E7%A8%8B/&is_video=false&description=浏览器解析机制与渲染过程"><i class="fab fa-pinterest fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=浏览器解析机制与渲染过程&body=Check out this article: http://yoursite.com/2020/03/10/%E6%B5%8F%E8%A7%88%E5%99%A8%E8%A7%A3%E6%9E%90%E6%9C%BA%E5%88%B6%E4%B8%8E%E6%B8%B2%E6%9F%93%E8%BF%87%E7%A8%8B/"><i class="fas fa-envelope fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=http://yoursite.com/2020/03/10/%E6%B5%8F%E8%A7%88%E5%99%A8%E8%A7%A3%E6%9E%90%E6%9C%BA%E5%88%B6%E4%B8%8E%E6%B8%B2%E6%9F%93%E8%BF%87%E7%A8%8B/&title=浏览器解析机制与渲染过程"><i class="fab fa-get-pocket fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=http://yoursite.com/2020/03/10/%E6%B5%8F%E8%A7%88%E5%99%A8%E8%A7%A3%E6%9E%90%E6%9C%BA%E5%88%B6%E4%B8%8E%E6%B8%B2%E6%9F%93%E8%BF%87%E7%A8%8B/&title=浏览器解析机制与渲染过程"><i class="fab fa-reddit fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=http://yoursite.com/2020/03/10/%E6%B5%8F%E8%A7%88%E5%99%A8%E8%A7%A3%E6%9E%90%E6%9C%BA%E5%88%B6%E4%B8%8E%E6%B8%B2%E6%9F%93%E8%BF%87%E7%A8%8B/&title=浏览器解析机制与渲染过程"><i class="fab fa-stumbleupon fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=http://yoursite.com/2020/03/10/%E6%B5%8F%E8%A7%88%E5%99%A8%E8%A7%A3%E6%9E%90%E6%9C%BA%E5%88%B6%E4%B8%8E%E6%B8%B2%E6%9F%93%E8%BF%87%E7%A8%8B/&title=浏览器解析机制与渲染过程"><i class="fab fa-digg fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=http://yoursite.com/2020/03/10/%E6%B5%8F%E8%A7%88%E5%99%A8%E8%A7%A3%E6%9E%90%E6%9C%BA%E5%88%B6%E4%B8%8E%E6%B8%B2%E6%9F%93%E8%BF%87%E7%A8%8B/&name=浏览器解析机制与渲染过程&description=&lt;p&gt;浏览器编解码与XSS bypass&lt;/p&gt;"><i class="fab fa-tumblr fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=http://yoursite.com/2020/03/10/%E6%B5%8F%E8%A7%88%E5%99%A8%E8%A7%A3%E6%9E%90%E6%9C%BA%E5%88%B6%E4%B8%8E%E6%B8%B2%E6%9F%93%E8%BF%87%E7%A8%8B/&t=浏览器解析机制与渲染过程"><i class="fab fa-hacker-news fa-lg" aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+
+    <div id="actions-footer">
+        <a id="menu" class="icon" href="#" onclick="$('#nav-footer').toggle();return false;"><i class="fas fa-bars fa-lg" aria-hidden="true"></i> 菜单</a>
+        <a id="toc" class="icon" href="#" onclick="$('#toc-footer').toggle();return false;"><i class="fas fa-list fa-lg" aria-hidden="true"></i> 目录</a>
+        <a id="share" class="icon" href="#" onclick="$('#share-footer').toggle();return false;"><i class="fas fa-share-alt fa-lg" aria-hidden="true"></i> 分享</a>
+        <a id="top" style="display:none" class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fas fa-chevron-up fa-lg" aria-hidden="true"></i> 返回顶部</a>
+    </div>
+
+  </div>
+</div>
+
+        
+        <footer id="footer">
+  <div class="footer-left">
+    Copyright &copy; 2021 M13n
+  </div>
+  <div class="footer-right">
+    <nav>
+      <ul>
+         
+          <li><a href="/">首页</a></li>
+         
+          <li><a href="/archives/">文章</a></li>
+         
+          <li><a href="/search/">搜索</a></li>
+        
+      </ul>
+    </nav>
+  </div>
+</footer>
+
+    </div>
+    <!-- styles -->
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+
+<link rel="stylesheet" href="/lib/justified-gallery/css/justifiedGallery.min.css">
+
+
+    <!-- jquery -->
+
+<script src="/lib/jquery/jquery.min.js"></script>
+
+
+<script src="/lib/justified-gallery/js/jquery.justifiedGallery.min.js"></script>
+
+<!-- clipboard -->
+
+  
+<script src="/lib/clipboard/clipboard.min.js"></script>
+
+  <script type="text/javascript">
+  $(function() {
+    // copy-btn HTML
+    var btn = "<span class=\"btn-copy tooltipped tooltipped-sw\" aria-label=\"复制到粘贴板!\">";
+    btn += '<i class="far fa-clone"></i>';
+    btn += '</span>'; 
+    // mount it!
+    $(".highlight table").before(btn);
+    var clip = new ClipboardJS('.btn-copy', {
+      text: function(trigger) {
+        return Array.from(trigger.nextElementSibling.querySelectorAll('.code')).reduce((str,it)=>str+it.innerText+'\n','')
+      }
+    });
+    clip.on('success', function(e) {
+      e.trigger.setAttribute('aria-label', "复制成功!");
+      e.clearSelection();
+    })
+  })
+  </script>
+
+
+<script src="/js/main.js"></script>
+
+<!-- search -->
+
+<!-- Google Analytics -->
+
+<!-- Baidu Analytics -->
+
+<!-- Disqus Comments -->
+
+
+</body>
+</html>

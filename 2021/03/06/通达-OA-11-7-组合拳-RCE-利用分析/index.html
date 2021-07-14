@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang=zh>
+<head>
+    <!-- so meta -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="HandheldFriendly" content="True">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+    <meta name="description" content="最近看到通达 11.7 的利用蛮火的，遂进行一下利用链复现和漏洞分析">
+<meta property="og:type" content="article">
+<meta property="og:title" content="通达 OA 11.7 组合拳 RCE 利用分析">
+<meta property="og:url" content="http://yoursite.com/2021/03/06/%E9%80%9A%E8%BE%BE-OA-11-7-%E7%BB%84%E5%90%88%E6%8B%B3-RCE-%E5%88%A9%E7%94%A8%E5%88%86%E6%9E%90/index.html">
+<meta property="og:site_name" content="M13n&#39;s Blog">
+<meta property="og:description" content="最近看到通达 11.7 的利用蛮火的，遂进行一下利用链复现和漏洞分析">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://yoursite.com/2021/03/06/%E9%80%9A%E8%BE%BE-OA-11-7-%E7%BB%84%E5%90%88%E6%8B%B3-RCE-%E5%88%A9%E7%94%A8%E5%88%86%E6%9E%90/image-20210306165321394.png">
+<meta property="og:image" content="http://yoursite.com/2021/03/06/%E9%80%9A%E8%BE%BE-OA-11-7-%E7%BB%84%E5%90%88%E6%8B%B3-RCE-%E5%88%A9%E7%94%A8%E5%88%86%E6%9E%90/tdoa_login.gif">
+<meta property="og:image" content="http://yoursite.com/2021/03/06/%E9%80%9A%E8%BE%BE-OA-11-7-%E7%BB%84%E5%90%88%E6%8B%B3-RCE-%E5%88%A9%E7%94%A8%E5%88%86%E6%9E%90/image-20210306162602233.png">
+<meta property="og:image" content="http://yoursite.com/2021/03/06/%E9%80%9A%E8%BE%BE-OA-11-7-%E7%BB%84%E5%90%88%E6%8B%B3-RCE-%E5%88%A9%E7%94%A8%E5%88%86%E6%9E%90/image-20210306162822973.png">
+<meta property="og:image" content="http://yoursite.com/2021/03/06/%E9%80%9A%E8%BE%BE-OA-11-7-%E7%BB%84%E5%90%88%E6%8B%B3-RCE-%E5%88%A9%E7%94%A8%E5%88%86%E6%9E%90/image-20210306163356077.png">
+<meta property="og:image" content="http://yoursite.com/2021/03/06/%E9%80%9A%E8%BE%BE-OA-11-7-%E7%BB%84%E5%90%88%E6%8B%B3-RCE-%E5%88%A9%E7%94%A8%E5%88%86%E6%9E%90/image-20210306171826275.png">
+<meta property="og:image" content="http://yoursite.com/2021/03/06/%E9%80%9A%E8%BE%BE-OA-11-7-%E7%BB%84%E5%90%88%E6%8B%B3-RCE-%E5%88%A9%E7%94%A8%E5%88%86%E6%9E%90/image-20210306172105355.png">
+<meta property="og:image" content="http://yoursite.com/2021/03/06/%E9%80%9A%E8%BE%BE-OA-11-7-%E7%BB%84%E5%90%88%E6%8B%B3-RCE-%E5%88%A9%E7%94%A8%E5%88%86%E6%9E%90/image-20210306172622773.png">
+<meta property="og:image" content="http://yoursite.com/2021/03/06/%E9%80%9A%E8%BE%BE-OA-11-7-%E7%BB%84%E5%90%88%E6%8B%B3-RCE-%E5%88%A9%E7%94%A8%E5%88%86%E6%9E%90/image-20210306173805231.png">
+<meta property="og:image" content="http://yoursite.com/2021/03/06/%E9%80%9A%E8%BE%BE-OA-11-7-%E7%BB%84%E5%90%88%E6%8B%B3-RCE-%E5%88%A9%E7%94%A8%E5%88%86%E6%9E%90/image-20210306175436943.png">
+<meta property="og:image" content="http://yoursite.com/2021/03/06/%E9%80%9A%E8%BE%BE-OA-11-7-%E7%BB%84%E5%90%88%E6%8B%B3-RCE-%E5%88%A9%E7%94%A8%E5%88%86%E6%9E%90/image-20210306182939453.png">
+<meta property="og:image" content="http://yoursite.com/2021/03/06/%E9%80%9A%E8%BE%BE-OA-11-7-%E7%BB%84%E5%90%88%E6%8B%B3-RCE-%E5%88%A9%E7%94%A8%E5%88%86%E6%9E%90/image-20210306182127626.png">
+<meta property="og:image" content="http://yoursite.com/2021/03/06/%E9%80%9A%E8%BE%BE-OA-11-7-%E7%BB%84%E5%90%88%E6%8B%B3-RCE-%E5%88%A9%E7%94%A8%E5%88%86%E6%9E%90/image-20210306182505520.png">
+<meta property="og:image" content="http://yoursite.com/2021/03/06/%E9%80%9A%E8%BE%BE-OA-11-7-%E7%BB%84%E5%90%88%E6%8B%B3-RCE-%E5%88%A9%E7%94%A8%E5%88%86%E6%9E%90/image-20210306181841312.png">
+<meta property="og:image" content="http://yoursite.com/2021/03/06/%E9%80%9A%E8%BE%BE-OA-11-7-%E7%BB%84%E5%90%88%E6%8B%B3-RCE-%E5%88%A9%E7%94%A8%E5%88%86%E6%9E%90/image-20210306182444599.png">
+<meta property="og:image" content="http://yoursite.com/2021/03/06/%E9%80%9A%E8%BE%BE-OA-11-7-%E7%BB%84%E5%90%88%E6%8B%B3-RCE-%E5%88%A9%E7%94%A8%E5%88%86%E6%9E%90/image-20210306200651555.png">
+<meta property="og:image" content="http://yoursite.com/2021/03/06/%E9%80%9A%E8%BE%BE-OA-11-7-%E7%BB%84%E5%90%88%E6%8B%B3-RCE-%E5%88%A9%E7%94%A8%E5%88%86%E6%9E%90/image-20210306200740513.png">
+<meta property="og:image" content="http://yoursite.com/2021/03/06/%E9%80%9A%E8%BE%BE-OA-11-7-%E7%BB%84%E5%90%88%E6%8B%B3-RCE-%E5%88%A9%E7%94%A8%E5%88%86%E6%9E%90/image-20210306195516702.png">
+<meta property="og:image" content="http://yoursite.com/2021/03/06/%E9%80%9A%E8%BE%BE-OA-11-7-%E7%BB%84%E5%90%88%E6%8B%B3-RCE-%E5%88%A9%E7%94%A8%E5%88%86%E6%9E%90/image-20210306195404386.png">
+<meta property="og:image" content="http://yoursite.com/2021/03/06/%E9%80%9A%E8%BE%BE-OA-11-7-%E7%BB%84%E5%90%88%E6%8B%B3-RCE-%E5%88%A9%E7%94%A8%E5%88%86%E6%9E%90/image-20210306195615119.png">
+<meta property="og:image" content="http://yoursite.com/2021/03/06/%E9%80%9A%E8%BE%BE-OA-11-7-%E7%BB%84%E5%90%88%E6%8B%B3-RCE-%E5%88%A9%E7%94%A8%E5%88%86%E6%9E%90/image-20210306200148850.png">
+<meta property="og:image" content="http://yoursite.com/2021/03/06/%E9%80%9A%E8%BE%BE-OA-11-7-%E7%BB%84%E5%90%88%E6%8B%B3-RCE-%E5%88%A9%E7%94%A8%E5%88%86%E6%9E%90/image-20210306205622135.png">
+<meta property="og:image" content="http://yoursite.com/2021/03/06/%E9%80%9A%E8%BE%BE-OA-11-7-%E7%BB%84%E5%90%88%E6%8B%B3-RCE-%E5%88%A9%E7%94%A8%E5%88%86%E6%9E%90/image-20210306211845796.png">
+<meta property="og:image" content="http://yoursite.com/2021/03/06/%E9%80%9A%E8%BE%BE-OA-11-7-%E7%BB%84%E5%90%88%E6%8B%B3-RCE-%E5%88%A9%E7%94%A8%E5%88%86%E6%9E%90/image-20210306183749247.png">
+<meta property="article:published_time" content="2021-03-06T07:46:17.000Z">
+<meta property="article:modified_time" content="2021-03-09T05:39:20.846Z">
+<meta property="article:author" content="M13n">
+<meta property="article:tag" content="PHP">
+<meta property="article:tag" content="通达">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://yoursite.com/2021/03/06/%E9%80%9A%E8%BE%BE-OA-11-7-%E7%BB%84%E5%90%88%E6%8B%B3-RCE-%E5%88%A9%E7%94%A8%E5%88%86%E6%9E%90/image-20210306165321394.png">
+    
+    
+        
+          
+              <link rel="shortcut icon" href="/images/favicon.ico">
+          
+        
+        
+          
+            <link rel="icon" type="image/png" href="/images/favicon-192x192.png" sizes="192x192">
+          
+        
+        
+          
+            <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png">
+          
+        
+    
+    <!-- title -->
+    <title>通达 OA 11.7 组合拳 RCE 利用分析</title>
+    <!-- styles -->
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <!-- persian styles -->
+    
+      
+<link rel="stylesheet" href="/css/rtl.css">
+
+    
+    <!-- rss -->
+    
+    
+<meta name="generator" content="Hexo 5.4.0"></head>
+
+<body class="max-width mx-auto px3 ltr">
+    
+      <div id="header-post">
+  <a id="menu-icon" href="#"><i class="fas fa-bars fa-lg"></i></a>
+  <a id="menu-icon-tablet" href="#"><i class="fas fa-bars fa-lg"></i></a>
+  <a id="top-icon-tablet" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');" style="display:none;"><i class="fas fa-chevron-up fa-lg"></i></a>
+  <span id="menu">
+    <span id="nav">
+      <ul>
+         
+          <li><a href="/">首页</a></li>
+         
+          <li><a href="/archives/">文章</a></li>
+         
+          <li><a href="/search/">搜索</a></li>
+        
+      </ul>
+    </span>
+    <br/>
+    <span id="actions">
+      <ul>
+        
+        <li><a class="icon" href="/2021/03/16/Exploitng-JNDI-Injection-In-Java/"><i class="fas fa-chevron-left" aria-hidden="true" onmouseover="$('#i-prev').toggle();" onmouseout="$('#i-prev').toggle();"></i></a></li>
+        
+        
+        <li><a class="icon" href="/2021/03/05/Spring-framework-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96-RCE-%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/"><i class="fas fa-chevron-right" aria-hidden="true" onmouseover="$('#i-next').toggle();" onmouseout="$('#i-next').toggle();"></i></a></li>
+        
+        <li><a class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fas fa-chevron-up" aria-hidden="true" onmouseover="$('#i-top').toggle();" onmouseout="$('#i-top').toggle();"></i></a></li>
+        <li><a class="icon" href="#"><i class="fas fa-share-alt" aria-hidden="true" onmouseover="$('#i-share').toggle();" onmouseout="$('#i-share').toggle();" onclick="$('#share').toggle();return false;"></i></a></li>
+      </ul>
+      <span id="i-prev" class="info" style="display:none;">上一篇</span>
+      <span id="i-next" class="info" style="display:none;">下一篇</span>
+      <span id="i-top" class="info" style="display:none;">返回顶部</span>
+      <span id="i-share" class="info" style="display:none;">分享文章</span>
+    </span>
+    <br/>
+    <div id="share" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=http://yoursite.com/2021/03/06/%E9%80%9A%E8%BE%BE-OA-11-7-%E7%BB%84%E5%90%88%E6%8B%B3-RCE-%E5%88%A9%E7%94%A8%E5%88%86%E6%9E%90/"><i class="fab fa-facebook " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=http://yoursite.com/2021/03/06/%E9%80%9A%E8%BE%BE-OA-11-7-%E7%BB%84%E5%90%88%E6%8B%B3-RCE-%E5%88%A9%E7%94%A8%E5%88%86%E6%9E%90/&text=通达 OA 11.7 组合拳 RCE 利用分析"><i class="fab fa-twitter " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=http://yoursite.com/2021/03/06/%E9%80%9A%E8%BE%BE-OA-11-7-%E7%BB%84%E5%90%88%E6%8B%B3-RCE-%E5%88%A9%E7%94%A8%E5%88%86%E6%9E%90/&title=通达 OA 11.7 组合拳 RCE 利用分析"><i class="fab fa-linkedin " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=http://yoursite.com/2021/03/06/%E9%80%9A%E8%BE%BE-OA-11-7-%E7%BB%84%E5%90%88%E6%8B%B3-RCE-%E5%88%A9%E7%94%A8%E5%88%86%E6%9E%90/&is_video=false&description=通达 OA 11.7 组合拳 RCE 利用分析"><i class="fab fa-pinterest " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=通达 OA 11.7 组合拳 RCE 利用分析&body=Check out this article: http://yoursite.com/2021/03/06/%E9%80%9A%E8%BE%BE-OA-11-7-%E7%BB%84%E5%90%88%E6%8B%B3-RCE-%E5%88%A9%E7%94%A8%E5%88%86%E6%9E%90/"><i class="fas fa-envelope " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=http://yoursite.com/2021/03/06/%E9%80%9A%E8%BE%BE-OA-11-7-%E7%BB%84%E5%90%88%E6%8B%B3-RCE-%E5%88%A9%E7%94%A8%E5%88%86%E6%9E%90/&title=通达 OA 11.7 组合拳 RCE 利用分析"><i class="fab fa-get-pocket " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=http://yoursite.com/2021/03/06/%E9%80%9A%E8%BE%BE-OA-11-7-%E7%BB%84%E5%90%88%E6%8B%B3-RCE-%E5%88%A9%E7%94%A8%E5%88%86%E6%9E%90/&title=通达 OA 11.7 组合拳 RCE 利用分析"><i class="fab fa-reddit " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=http://yoursite.com/2021/03/06/%E9%80%9A%E8%BE%BE-OA-11-7-%E7%BB%84%E5%90%88%E6%8B%B3-RCE-%E5%88%A9%E7%94%A8%E5%88%86%E6%9E%90/&title=通达 OA 11.7 组合拳 RCE 利用分析"><i class="fab fa-stumbleupon " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=http://yoursite.com/2021/03/06/%E9%80%9A%E8%BE%BE-OA-11-7-%E7%BB%84%E5%90%88%E6%8B%B3-RCE-%E5%88%A9%E7%94%A8%E5%88%86%E6%9E%90/&title=通达 OA 11.7 组合拳 RCE 利用分析"><i class="fab fa-digg " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=http://yoursite.com/2021/03/06/%E9%80%9A%E8%BE%BE-OA-11-7-%E7%BB%84%E5%90%88%E6%8B%B3-RCE-%E5%88%A9%E7%94%A8%E5%88%86%E6%9E%90/&name=通达 OA 11.7 组合拳 RCE 利用分析&description=&lt;p&gt;最近看到通达 11.7 的利用蛮火的，遂进行一下利用链复现和漏洞分析&lt;/p&gt;"><i class="fab fa-tumblr " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=http://yoursite.com/2021/03/06/%E9%80%9A%E8%BE%BE-OA-11-7-%E7%BB%84%E5%90%88%E6%8B%B3-RCE-%E5%88%A9%E7%94%A8%E5%88%86%E6%9E%90/&t=通达 OA 11.7 组合拳 RCE 利用分析"><i class="fab fa-hacker-news " aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+    <div id="toc">
+      <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E7%BB%84%E5%90%88%E6%8B%B3%E6%A6%82%E8%BF%B0"><span class="toc-number">1.</span> <span class="toc-text">组合拳概述</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E7%BB%84%E5%90%88%E6%8B%B3%E4%B8%80"><span class="toc-number">2.</span> <span class="toc-text">组合拳一</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BB%BB%E6%84%8F%E7%94%A8%E6%88%B7%E7%99%BB%E9%99%86"><span class="toc-number">2.1.</span> <span class="toc-text">任意用户登陆</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BB%BB%E6%84%8F%E6%96%87%E4%BB%B6%E8%AF%BB%E5%8F%96"><span class="toc-number">2.2.</span> <span class="toc-text">任意文件读取</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#SSRF"><span class="toc-number">2.3.</span> <span class="toc-text">SSRF</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E7%BB%84%E5%90%88%E6%8B%B3%E4%BA%8C"><span class="toc-number">3.</span> <span class="toc-text">组合拳二</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%96%87%E4%BB%B6%E4%B8%8A%E4%BC%A0-%E7%9B%AE%E5%BD%95%E7%A9%BF%E8%B6%8A"><span class="toc-number">3.1.</span> <span class="toc-text">文件上传 + 目录穿越</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%96%87%E4%BB%B6%E5%8C%85%E5%90%AB"><span class="toc-number">3.2.</span> <span class="toc-text">文件包含</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E5%90%8E%E5%8F%B0-SQL-%E6%B3%A8%E5%85%A5"><span class="toc-number">4.</span> <span class="toc-text">后台 SQL 注入</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#REF"><span class="toc-number">5.</span> <span class="toc-text">REF</span></a></li></ol>
+    </div>
+  </span>
+</div>
+
+    
+    <div class="content index py4">
+        
+        <article class="post" itemscope itemtype="http://schema.org/BlogPosting">
+  <header>
+    
+    <h1 class="posttitle" itemprop="name headline">
+        通达 OA 11.7 组合拳 RCE 利用分析
+    </h1>
+
+
+
+    <div class="meta">
+      <span class="author" itemprop="author" itemscope itemtype="http://schema.org/Person">
+        <span itemprop="name">M13n's Blog</span>
+      </span>
+      
+    <div class="postdate">
+      
+        <time datetime="2021-03-06T07:46:17.000Z" itemprop="datePublished">2021-03-06</time>
+        
+      
+    </div>
+
+
+      
+    <div class="article-category">
+        <i class="fas fa-archive"></i>
+        <a class="category-link" href="/categories/PHP-Sec/">PHP Sec</a>
+    </div>
+
+
+      
+    <div class="article-tag">
+        <i class="fas fa-tag"></i>
+        <a class="tag-link-link" href="/tags/PHP/" rel="tag">PHP</a>, <a class="tag-link-link" href="/tags/%E9%80%9A%E8%BE%BE/" rel="tag">通达</a>
+    </div>
+
+
+    </div>
+  </header>
+  
+
+  <div class="content" itemprop="articleBody">
+    <p>最近看到通达 11.7 的利用蛮火的，遂进行一下利用链复现和漏洞分析</p>
+<span id="more"></span>
+
+<p>文章首发于 SECIN社区：<a target="_blank" rel="noopener" href="https://sec-in.com/article/921">https://sec-in.com/article/921</a></p>
+<h1 id="组合拳概述"><a href="#组合拳概述" class="headerlink" title="组合拳概述"></a>组合拳概述</h1><p>大概看到两个利用的思路</p>
+<ol>
+<li>任意用户登陆 + 任意文件读取 + SSRF</li>
+<li>任意用户登陆 + 文件上传 + 目录穿越 + 文件包含</li>
+</ol>
+<p>Trick：快速判断版本，可使用 <code>inc/expired.php</code> 等目录</p>
+<p><img src="/2021/03/06/%E9%80%9A%E8%BE%BE-OA-11-7-%E7%BB%84%E5%90%88%E6%8B%B3-RCE-%E5%88%A9%E7%94%A8%E5%88%86%E6%9E%90/image-20210306165321394.png"></p>
+<h1 id="组合拳一"><a href="#组合拳一" class="headerlink" title="组合拳一"></a>组合拳一</h1><h2 id="任意用户登陆"><a href="#任意用户登陆" class="headerlink" title="任意用户登陆"></a>任意用户登陆</h2><p>组合拳 RCE 的灵魂，利用条件：需管理员在线</p>
+<p>POC</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">/mobile/auth_mobi.php?isAvatar=1&amp;uid=1&amp;P_VER=0</span><br></pre></td></tr></table></figure>
+
+<p><img src="/2021/03/06/%E9%80%9A%E8%BE%BE-OA-11-7-%E7%BB%84%E5%90%88%E6%8B%B3-RCE-%E5%88%A9%E7%94%A8%E5%88%86%E6%9E%90/tdoa_login.gif" alt="tdoa_login"></p>
+<p>漏洞产生的核心是在这里会根据这些参数的判断，从而进行数据库查询，最后将 SID 附值给 P 后，调用 <code>session_id</code> 覆盖了 session</p>
+<p>看一下数据库查询语句</p>
+<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line">$<span class="keyword">sql</span> <span class="operator">=</span> &quot;SELECT SID FROM user_online WHERE UID = &#x27;$uid&#x27; and CLIENT = &#x27;$P_VER&#x27;&quot;;</span><br></pre></td></tr></table></figure>
+
+<p>UID 是在线人员的 UID</p>
+<p>Client 客户端登录设备类型，0 指浏览器</p>
+<p>可以通过遍历 UID 登录所有当前在线的账号</p>
+<p><img src="/2021/03/06/%E9%80%9A%E8%BE%BE-OA-11-7-%E7%BB%84%E5%90%88%E6%8B%B3-RCE-%E5%88%A9%E7%94%A8%E5%88%86%E6%9E%90/image-20210306162602233.png"></p>
+<p>故而取出的 SID 就是 PHPSESSID，随后经过 session_id + session_start 重新设置当前会话 ID并重用现有会话</p>
+<p>从下图可以看出两者 PHPSESSID 是一样的</p>
+<p><img src="/2021/03/06/%E9%80%9A%E8%BE%BE-OA-11-7-%E7%BB%84%E5%90%88%E6%8B%B3-RCE-%E5%88%A9%E7%94%A8%E5%88%86%E6%9E%90/image-20210306162822973.png"></p>
+<p>同时根据源码可以推断出，如果管理员不在线，那么数据库中取出的 SID 附值给 P 也是空的，因此会调用 <code>relogin()</code>，输出 RELOGIN 并退出</p>
+<p><img src="/2021/03/06/%E9%80%9A%E8%BE%BE-OA-11-7-%E7%BB%84%E5%90%88%E6%8B%B3-RCE-%E5%88%A9%E7%94%A8%E5%88%86%E6%9E%90/image-20210306163356077.png"></p>
+<h2 id="任意文件读取"><a href="#任意文件读取" class="headerlink" title="任意文件读取"></a>任意文件读取</h2><p>读取文件之前先找一下绝对路径，下面的这个 URI 泄漏了一些敏感信息（需要登录）</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">/general/approve_center/archive/getTableStruc.php</span><br></pre></td></tr></table></figure>
+
+<p><img src="/2021/03/06/%E9%80%9A%E8%BE%BE-OA-11-7-%E7%BB%84%E5%90%88%E6%8B%B3-RCE-%E5%88%A9%E7%94%A8%E5%88%86%E6%9E%90/image-20210306171826275.png"></p>
+<p>看一下相关源码，这里找的是 log 路径输出的位置</p>
+<p><img src="/2021/03/06/%E9%80%9A%E8%BE%BE-OA-11-7-%E7%BB%84%E5%90%88%E6%8B%B3-RCE-%E5%88%A9%E7%94%A8%E5%88%86%E6%9E%90/image-20210306172105355.png"></p>
+<p>这里可以获取一部分绝对路径 <code>C:/TDOA</code></p>
+<p>看了一下 redis.windows.conf 这个是默认安在 OApath/bin/redis.windows.conf 这里的</p>
+<p><img src="/2021/03/06/%E9%80%9A%E8%BE%BE-OA-11-7-%E7%BB%84%E5%90%88%E6%8B%B3-RCE-%E5%88%A9%E7%94%A8%E5%88%86%E6%9E%90/image-20210306172622773.png"></p>
+<p>因此获取绝对路径为 <code>C:\TDOA\bin\redis.windows.conf</code></p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">/ispirit/im/photo.php?AVATAR_FILE=C:\TDOA\bin\redis.windows.conf&amp;UID=1</span><br></pre></td></tr></table></figure>
+
+<p><img src="/2021/03/06/%E9%80%9A%E8%BE%BE-OA-11-7-%E7%BB%84%E5%90%88%E6%8B%B3-RCE-%E5%88%A9%E7%94%A8%E5%88%86%E6%9E%90/image-20210306173805231.png"></p>
+<p>photo.php 最上方有一个对 UID 相关的判断</p>
+<figure class="highlight php"><table><tr><td class="code"><pre><span class="line"><span class="keyword">if</span> (<span class="keyword">isset</span>(<span class="variable">$UID</span>) &amp;&amp; (<span class="number">0</span> &lt; intval(<span class="variable">$UID</span>))) </span><br></pre></td></tr></table></figure>
+
+<p>只要大于 0，那么就进入 if 里面的内容</p>
+<p>代码中前面有对于 KEY 的判断，会有相应的 <code>$AVATAR_FILE</code> 的拼接处理，核心漏洞代码如下，判断是否 <code>$AVATAR_FILE</code>  对应的文件存在，如果存在的话就读取，因此这里造成了任意文件读取漏洞</p>
+<p><img src="/2021/03/06/%E9%80%9A%E8%BE%BE-OA-11-7-%E7%BB%84%E5%90%88%E6%8B%B3-RCE-%E5%88%A9%E7%94%A8%E5%88%86%E6%9E%90/image-20210306175436943.png"></p>
+<p><strong>值得留疑的是我并没有找到  <code>$AVATAR_FILE</code> 和 <code>UID</code>  的传参点，跟了几个 include 进来的文件也没有发现  <code>$AVATAR_FILE</code> 和 <code>UID</code>   传参附值的地方，可能是在更深的调用，没有对全部文件解密，懒得一个个找了，暂时这么理解吧，如果有师傅知道可以滴滴我</strong></p>
+<h2 id="SSRF"><a href="#SSRF" class="headerlink" title="SSRF"></a>SSRF</h2><p>POC</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">/pda/workflow/img_download.php?PLATFORM=dd&amp;ATTACHMENTS=PAYLOAD</span><br></pre></td></tr></table></figure>
+
+<p>可结合 redis 进行更深一步的利用，这里以 http 请求为例</p>
+<p><img src="/2021/03/06/%E9%80%9A%E8%BE%BE-OA-11-7-%E7%BB%84%E5%90%88%E6%8B%B3-RCE-%E5%88%A9%E7%94%A8%E5%88%86%E6%9E%90/image-20210306182939453.png"></p>
+<p>先看 img_download.php，这里根据 PLATFORM 参数值进入不同的 IF 语句，在 dd 这里，ATTACHMENTS 经过切割处理和遍历之后，调用到 remote_download 函数</p>
+<p><img src="/2021/03/06/%E9%80%9A%E8%BE%BE-OA-11-7-%E7%BB%84%E5%90%88%E6%8B%B3-RCE-%E5%88%A9%E7%94%A8%E5%88%86%E6%9E%90/image-20210306182127626.png"></p>
+<p>跟进  <code>remote_download</code>，这里初始化了一个 Curl 类</p>
+<p><img src="/2021/03/06/%E9%80%9A%E8%BE%BE-OA-11-7-%E7%BB%84%E5%90%88%E6%8B%B3-RCE-%E5%88%A9%E7%94%A8%E5%88%86%E6%9E%90/image-20210306182505520.png"></p>
+<p>看一下 curl.class 类，根据其构造方法可以看到这里</p>
+<p><img src="/2021/03/06/%E9%80%9A%E8%BE%BE-OA-11-7-%E7%BB%84%E5%90%88%E6%8B%B3-RCE-%E5%88%A9%E7%94%A8%E5%88%86%E6%9E%90/image-20210306181841312.png"></p>
+<p>在<code>remote_download</code> 调用<code>get</code>方法的时候会调用到 Curl 类的 <code>get</code> 方法，执行指定的 cURL 会话，造成了 SSRF</p>
+<p><img src="/2021/03/06/%E9%80%9A%E8%BE%BE-OA-11-7-%E7%BB%84%E5%90%88%E6%8B%B3-RCE-%E5%88%A9%E7%94%A8%E5%88%86%E6%9E%90/image-20210306182444599.png"></p>
+<h1 id="组合拳二"><a href="#组合拳二" class="headerlink" title="组合拳二"></a>组合拳二</h1><h2 id="文件上传-目录穿越"><a href="#文件上传-目录穿越" class="headerlink" title="文件上传 + 目录穿越"></a>文件上传 + 目录穿越</h2><p>@LoRexxar 师傅文里提到通达 OA 处理上传文件的逻辑主要函数为<code>td_copy</code>和<code>td_move_uploaded_file</code>这两个</p>
+<p>这里与漏洞利用相关的为<code>td_move_uploaded_file</code></p>
+<p><code>webroot\inc\utility_file.php</code></p>
+<p><img src="/2021/03/06/%E9%80%9A%E8%BE%BE-OA-11-7-%E7%BB%84%E5%90%88%E6%8B%B3-RCE-%E5%88%A9%E7%94%A8%E5%88%86%E6%9E%90/image-20210306200651555.png"></p>
+<p>跟进<code>is_uploadable</code>函数</p>
+<p><img src="/2021/03/06/%E9%80%9A%E8%BE%BE-OA-11-7-%E7%BB%84%E5%90%88%E6%8B%B3-RCE-%E5%88%A9%E7%94%A8%E5%88%86%E6%9E%90/image-20210306200740513.png"></p>
+<p>原文概括已经很好了</p>
+<p>1、不能没有<code>.</code><br>2、不能<code>.</code>之后为空<br>3、<code>.</code>之后3个字符不能是 php</p>
+<p>由于通达内置的nginx的配置很好，导致避免了其他文件后缀解析成 PHP</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">location ~ \.php$ &#123;</span><br><span class="line">    fastcgi_pass   OfficeFPM;</span><br><span class="line">    fastcgi_index  index.php;</span><br><span class="line">    include        fastcgi.conf;</span><br><span class="line"></span><br><span class="line">    add_header X-Frame-Options SAMEORIGIN;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>其次通达还配置了专门的附件目录</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">location /attachment &#123;</span><br><span class="line">    deny all;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>一般来说，除非找到绕过的办法，否则所有的文件都会被上传到这个目录下，那么无论我们是否能绕过后缀限制，我们都没办法解析执行php文件，所以这里我们需要找到一个配合目录穿越的文件上传点</p>
+</blockquote>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">/general/reportshop/utils/upload.php</span><br></pre></td></tr></table></figure>
+
+<p>看一下相关的源代码，上传的文件属性不是 xls 或者 img 才会进入后面的判断流程</p>
+<p><img src="/2021/03/06/%E9%80%9A%E8%BE%BE-OA-11-7-%E7%BB%84%E5%90%88%E6%8B%B3-RCE-%E5%88%A9%E7%94%A8%E5%88%86%E6%9E%90/image-20210306195516702.png"></p>
+<p>之后先进行 <code>check_filename</code> 和 <code>check_filetype</code></p>
+<p><img src="/2021/03/06/%E9%80%9A%E8%BE%BE-OA-11-7-%E7%BB%84%E5%90%88%E6%8B%B3-RCE-%E5%88%A9%E7%94%A8%E5%88%86%E6%9E%90/image-20210306195404386.png"></p>
+<p>跟进两个判断函数，<code>check_filename</code> 主要判断一些斜杠之类的敏感字符，<code>check_filetype</code> 则是以黑名单的形式校验了后缀名，这里限制了 php，但是我们可以通过传 txt 等方式结合文件包含来 getshell，接着我们需要找目录穿越</p>
+<p><img src="/2021/03/06/%E9%80%9A%E8%BE%BE-OA-11-7-%E7%BB%84%E5%90%88%E6%8B%B3-RCE-%E5%88%A9%E7%94%A8%E5%88%86%E6%9E%90/image-20210306195615119.png"></p>
+<p>核心漏洞点，这里 <code>newid</code> 的可控会造成目录穿越</p>
+<p><img src="/2021/03/06/%E9%80%9A%E8%BE%BE-OA-11-7-%E7%BB%84%E5%90%88%E6%8B%B3-RCE-%E5%88%A9%E7%94%A8%E5%88%86%E6%9E%90/image-20210306200148850.png"></p>
+<blockquote>
+<p>这里可以关注到newid被直接拼接进了路径中，且没有设计专门的过滤，导致我们可以穿越任意目录写，当newid为<code>../../../../</code>目录相应就为</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">D:/MYOA/webroot/attachment/reportshop/attachment/&#123;321/../../../../a&#125;_.txt</span><br></pre></td></tr></table></figure>
+</blockquote>
+<p>题外话：通达OA 11.5 是在 <code>general/data_center/utils/upload.php</code> 这个 URI 下结合 <code>/module/appbuilder/assets/print.php?guid=../../../webroot/inc/auth.inc.php&quot;</code> 任意文件删除，删除鉴权文件后，可以实现未授权任意文件上传 getshell</p>
+<h2 id="文件包含"><a href="#文件包含" class="headerlink" title="文件包含"></a>文件包含</h2><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">/ispirit/interface/gateway.php</span><br></pre></td></tr></table></figure>
+
+<p>看一下相关源码，这里限制了general、ispirit、module开头</p>
+<p><img src="/2021/03/06/%E9%80%9A%E8%BE%BE-OA-11-7-%E7%BB%84%E5%90%88%E6%8B%B3-RCE-%E5%88%A9%E7%94%A8%E5%88%86%E6%9E%90/image-20210306205622135.png"></p>
+<p>利用方式很简单，不用强行绕过包含的逻辑，只需要结合前面的跨目录文件上传直接上传到这里限制的目录下利用包含就可以了</p>
+<p><img src="/2021/03/06/%E9%80%9A%E8%BE%BE-OA-11-7-%E7%BB%84%E5%90%88%E6%8B%B3-RCE-%E5%88%A9%E7%94%A8%E5%88%86%E6%9E%90/image-20210306211845796.png"></p>
+<h1 id="后台-SQL-注入"><a href="#后台-SQL-注入" class="headerlink" title="后台 SQL 注入"></a>后台 SQL 注入</h1><p>URI</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">/general/appbuilder/web/officeproduct/productapply/applyprobygroup</span><br></pre></td></tr></table></figure>
+
+<p>POST</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">arr[5][pro_id]=151&#x27;;select sleep(5) %23</span><br></pre></td></tr></table></figure>
+
+
+
+<p><img src="/2021/03/06/%E9%80%9A%E8%BE%BE-OA-11-7-%E7%BB%84%E5%90%88%E6%8B%B3-RCE-%E5%88%A9%E7%94%A8%E5%88%86%E6%9E%90/image-20210306183749247.png"></p>
+<h1 id="REF"><a href="#REF" class="headerlink" title="REF"></a>REF</h1><p><a target="_blank" rel="noopener" href="https://paper.seebug.org/1492/">https://paper.seebug.org/1492/</a></p>
+<p><a target="_blank" rel="noopener" href="https://articles.zsxq.com/id_cffeaoi67h29.html">https://articles.zsxq.com/id_cffeaoi67h29.html</a></p>
+
+  </div>
+</article>
+
+
+
+        
+          <div id="footer-post-container">
+  <div id="footer-post">
+
+    <div id="nav-footer" style="display: none">
+      <ul>
+         
+          <li><a href="/">首页</a></li>
+         
+          <li><a href="/archives/">文章</a></li>
+         
+          <li><a href="/search/">搜索</a></li>
+        
+      </ul>
+    </div>
+
+    <div id="toc-footer" style="display: none">
+      <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E7%BB%84%E5%90%88%E6%8B%B3%E6%A6%82%E8%BF%B0"><span class="toc-number">1.</span> <span class="toc-text">组合拳概述</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E7%BB%84%E5%90%88%E6%8B%B3%E4%B8%80"><span class="toc-number">2.</span> <span class="toc-text">组合拳一</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BB%BB%E6%84%8F%E7%94%A8%E6%88%B7%E7%99%BB%E9%99%86"><span class="toc-number">2.1.</span> <span class="toc-text">任意用户登陆</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BB%BB%E6%84%8F%E6%96%87%E4%BB%B6%E8%AF%BB%E5%8F%96"><span class="toc-number">2.2.</span> <span class="toc-text">任意文件读取</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#SSRF"><span class="toc-number">2.3.</span> <span class="toc-text">SSRF</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E7%BB%84%E5%90%88%E6%8B%B3%E4%BA%8C"><span class="toc-number">3.</span> <span class="toc-text">组合拳二</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%96%87%E4%BB%B6%E4%B8%8A%E4%BC%A0-%E7%9B%AE%E5%BD%95%E7%A9%BF%E8%B6%8A"><span class="toc-number">3.1.</span> <span class="toc-text">文件上传 + 目录穿越</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%96%87%E4%BB%B6%E5%8C%85%E5%90%AB"><span class="toc-number">3.2.</span> <span class="toc-text">文件包含</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E5%90%8E%E5%8F%B0-SQL-%E6%B3%A8%E5%85%A5"><span class="toc-number">4.</span> <span class="toc-text">后台 SQL 注入</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#REF"><span class="toc-number">5.</span> <span class="toc-text">REF</span></a></li></ol>
+    </div>
+
+    <div id="share-footer" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=http://yoursite.com/2021/03/06/%E9%80%9A%E8%BE%BE-OA-11-7-%E7%BB%84%E5%90%88%E6%8B%B3-RCE-%E5%88%A9%E7%94%A8%E5%88%86%E6%9E%90/"><i class="fab fa-facebook fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=http://yoursite.com/2021/03/06/%E9%80%9A%E8%BE%BE-OA-11-7-%E7%BB%84%E5%90%88%E6%8B%B3-RCE-%E5%88%A9%E7%94%A8%E5%88%86%E6%9E%90/&text=通达 OA 11.7 组合拳 RCE 利用分析"><i class="fab fa-twitter fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=http://yoursite.com/2021/03/06/%E9%80%9A%E8%BE%BE-OA-11-7-%E7%BB%84%E5%90%88%E6%8B%B3-RCE-%E5%88%A9%E7%94%A8%E5%88%86%E6%9E%90/&title=通达 OA 11.7 组合拳 RCE 利用分析"><i class="fab fa-linkedin fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=http://yoursite.com/2021/03/06/%E9%80%9A%E8%BE%BE-OA-11-7-%E7%BB%84%E5%90%88%E6%8B%B3-RCE-%E5%88%A9%E7%94%A8%E5%88%86%E6%9E%90/&is_video=false&description=通达 OA 11.7 组合拳 RCE 利用分析"><i class="fab fa-pinterest fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=通达 OA 11.7 组合拳 RCE 利用分析&body=Check out this article: http://yoursite.com/2021/03/06/%E9%80%9A%E8%BE%BE-OA-11-7-%E7%BB%84%E5%90%88%E6%8B%B3-RCE-%E5%88%A9%E7%94%A8%E5%88%86%E6%9E%90/"><i class="fas fa-envelope fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=http://yoursite.com/2021/03/06/%E9%80%9A%E8%BE%BE-OA-11-7-%E7%BB%84%E5%90%88%E6%8B%B3-RCE-%E5%88%A9%E7%94%A8%E5%88%86%E6%9E%90/&title=通达 OA 11.7 组合拳 RCE 利用分析"><i class="fab fa-get-pocket fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=http://yoursite.com/2021/03/06/%E9%80%9A%E8%BE%BE-OA-11-7-%E7%BB%84%E5%90%88%E6%8B%B3-RCE-%E5%88%A9%E7%94%A8%E5%88%86%E6%9E%90/&title=通达 OA 11.7 组合拳 RCE 利用分析"><i class="fab fa-reddit fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=http://yoursite.com/2021/03/06/%E9%80%9A%E8%BE%BE-OA-11-7-%E7%BB%84%E5%90%88%E6%8B%B3-RCE-%E5%88%A9%E7%94%A8%E5%88%86%E6%9E%90/&title=通达 OA 11.7 组合拳 RCE 利用分析"><i class="fab fa-stumbleupon fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=http://yoursite.com/2021/03/06/%E9%80%9A%E8%BE%BE-OA-11-7-%E7%BB%84%E5%90%88%E6%8B%B3-RCE-%E5%88%A9%E7%94%A8%E5%88%86%E6%9E%90/&title=通达 OA 11.7 组合拳 RCE 利用分析"><i class="fab fa-digg fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=http://yoursite.com/2021/03/06/%E9%80%9A%E8%BE%BE-OA-11-7-%E7%BB%84%E5%90%88%E6%8B%B3-RCE-%E5%88%A9%E7%94%A8%E5%88%86%E6%9E%90/&name=通达 OA 11.7 组合拳 RCE 利用分析&description=&lt;p&gt;最近看到通达 11.7 的利用蛮火的，遂进行一下利用链复现和漏洞分析&lt;/p&gt;"><i class="fab fa-tumblr fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=http://yoursite.com/2021/03/06/%E9%80%9A%E8%BE%BE-OA-11-7-%E7%BB%84%E5%90%88%E6%8B%B3-RCE-%E5%88%A9%E7%94%A8%E5%88%86%E6%9E%90/&t=通达 OA 11.7 组合拳 RCE 利用分析"><i class="fab fa-hacker-news fa-lg" aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+
+    <div id="actions-footer">
+        <a id="menu" class="icon" href="#" onclick="$('#nav-footer').toggle();return false;"><i class="fas fa-bars fa-lg" aria-hidden="true"></i> 菜单</a>
+        <a id="toc" class="icon" href="#" onclick="$('#toc-footer').toggle();return false;"><i class="fas fa-list fa-lg" aria-hidden="true"></i> 目录</a>
+        <a id="share" class="icon" href="#" onclick="$('#share-footer').toggle();return false;"><i class="fas fa-share-alt fa-lg" aria-hidden="true"></i> 分享</a>
+        <a id="top" style="display:none" class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fas fa-chevron-up fa-lg" aria-hidden="true"></i> 返回顶部</a>
+    </div>
+
+  </div>
+</div>
+
+        
+        <footer id="footer">
+  <div class="footer-left">
+    Copyright &copy; 2021 M13n
+  </div>
+  <div class="footer-right">
+    <nav>
+      <ul>
+         
+          <li><a href="/">首页</a></li>
+         
+          <li><a href="/archives/">文章</a></li>
+         
+          <li><a href="/search/">搜索</a></li>
+        
+      </ul>
+    </nav>
+  </div>
+</footer>
+
+    </div>
+    <!-- styles -->
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+
+<link rel="stylesheet" href="/lib/justified-gallery/css/justifiedGallery.min.css">
+
+
+    <!-- jquery -->
+
+<script src="/lib/jquery/jquery.min.js"></script>
+
+
+<script src="/lib/justified-gallery/js/jquery.justifiedGallery.min.js"></script>
+
+<!-- clipboard -->
+
+  
+<script src="/lib/clipboard/clipboard.min.js"></script>
+
+  <script type="text/javascript">
+  $(function() {
+    // copy-btn HTML
+    var btn = "<span class=\"btn-copy tooltipped tooltipped-sw\" aria-label=\"复制到粘贴板!\">";
+    btn += '<i class="far fa-clone"></i>';
+    btn += '</span>'; 
+    // mount it!
+    $(".highlight table").before(btn);
+    var clip = new ClipboardJS('.btn-copy', {
+      text: function(trigger) {
+        return Array.from(trigger.nextElementSibling.querySelectorAll('.code')).reduce((str,it)=>str+it.innerText+'\n','')
+      }
+    });
+    clip.on('success', function(e) {
+      e.trigger.setAttribute('aria-label', "复制成功!");
+      e.clearSelection();
+    })
+  })
+  </script>
+
+
+<script src="/js/main.js"></script>
+
+<!-- search -->
+
+<!-- Google Analytics -->
+
+<!-- Baidu Analytics -->
+
+<!-- Disqus Comments -->
+
+
+</body>
+</html>

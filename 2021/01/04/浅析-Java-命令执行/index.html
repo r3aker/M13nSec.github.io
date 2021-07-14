@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang=zh>
+<head>
+    <!-- so meta -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="HandheldFriendly" content="True">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+    <meta name="description" content="对 Java 命令执行过程中的流程以及利用坑点进行学习分析">
+<meta property="og:type" content="article">
+<meta property="og:title" content="浅析 Java 命令执行">
+<meta property="og:url" content="http://yoursite.com/2021/01/04/%E6%B5%85%E6%9E%90-Java-%E5%91%BD%E4%BB%A4%E6%89%A7%E8%A1%8C/index.html">
+<meta property="og:site_name" content="M13n&#39;s Blog">
+<meta property="og:description" content="对 Java 命令执行过程中的流程以及利用坑点进行学习分析">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://yoursite.com/2021/01/04/%E6%B5%85%E6%9E%90-Java-%E5%91%BD%E4%BB%A4%E6%89%A7%E8%A1%8C/640-20210104175324690.png">
+<meta property="og:image" content="http://yoursite.com/2021/01/04/%E6%B5%85%E6%9E%90-Java-%E5%91%BD%E4%BB%A4%E6%89%A7%E8%A1%8C/image-20210205161800399.png">
+<meta property="og:image" content="http://yoursite.com/2021/01/04/%E6%B5%85%E6%9E%90-Java-%E5%91%BD%E4%BB%A4%E6%89%A7%E8%A1%8C/image-20210104230049823.png">
+<meta property="og:image" content="http://yoursite.com/2021/01/04/%E6%B5%85%E6%9E%90-Java-%E5%91%BD%E4%BB%A4%E6%89%A7%E8%A1%8C/image-20210104221719003.png">
+<meta property="og:image" content="http://yoursite.com/2021/01/04/%E6%B5%85%E6%9E%90-Java-%E5%91%BD%E4%BB%A4%E6%89%A7%E8%A1%8C/image-20210104234608650.png">
+<meta property="og:image" content="http://yoursite.com/2021/01/04/%E6%B5%85%E6%9E%90-Java-%E5%91%BD%E4%BB%A4%E6%89%A7%E8%A1%8C/image-20210105150858270.png">
+<meta property="og:image" content="http://yoursite.com/2021/01/04/%E6%B5%85%E6%9E%90-Java-%E5%91%BD%E4%BB%A4%E6%89%A7%E8%A1%8C/image-20210105151115015.png">
+<meta property="og:image" content="http://yoursite.com/2021/01/04/%E6%B5%85%E6%9E%90-Java-%E5%91%BD%E4%BB%A4%E6%89%A7%E8%A1%8C/image-20210105151526661.png">
+<meta property="og:image" content="http://yoursite.com/2021/01/04/%E6%B5%85%E6%9E%90-Java-%E5%91%BD%E4%BB%A4%E6%89%A7%E8%A1%8C/image-20210105152752920.png">
+<meta property="og:image" content="http://yoursite.com/2021/01/04/%E6%B5%85%E6%9E%90-Java-%E5%91%BD%E4%BB%A4%E6%89%A7%E8%A1%8C/image-20210105195813557.png">
+<meta property="og:image" content="http://yoursite.com/2021/01/04/%E6%B5%85%E6%9E%90-Java-%E5%91%BD%E4%BB%A4%E6%89%A7%E8%A1%8C/image-20210105195931773.png">
+<meta property="og:image" content="http://yoursite.com/2021/01/04/%E6%B5%85%E6%9E%90-Java-%E5%91%BD%E4%BB%A4%E6%89%A7%E8%A1%8C/image-20210105191140624.png">
+<meta property="og:image" content="http://yoursite.com/2021/01/04/%E6%B5%85%E6%9E%90-Java-%E5%91%BD%E4%BB%A4%E6%89%A7%E8%A1%8C/image-20210105201427968.png">
+<meta property="og:image" content="http://yoursite.com/2021/01/04/%E6%B5%85%E6%9E%90-Java-%E5%91%BD%E4%BB%A4%E6%89%A7%E8%A1%8C/image-20210105201541913.png">
+<meta property="og:image" content="http://yoursite.com/2021/01/04/%E6%B5%85%E6%9E%90-Java-%E5%91%BD%E4%BB%A4%E6%89%A7%E8%A1%8C/image-20210105214313973.png">
+<meta property="og:image" content="http://yoursite.com/2021/01/04/%E6%B5%85%E6%9E%90-Java-%E5%91%BD%E4%BB%A4%E6%89%A7%E8%A1%8C/image-20210105214108311.png">
+<meta property="og:image" content="http://yoursite.com/2021/01/04/%E6%B5%85%E6%9E%90-Java-%E5%91%BD%E4%BB%A4%E6%89%A7%E8%A1%8C/image-20210105213850286.png">
+<meta property="og:image" content="http://yoursite.com/2021/01/04/%E6%B5%85%E6%9E%90-Java-%E5%91%BD%E4%BB%A4%E6%89%A7%E8%A1%8C/image-20210105214745759.png">
+<meta property="og:image" content="http://yoursite.com/2021/01/04/%E6%B5%85%E6%9E%90-Java-%E5%91%BD%E4%BB%A4%E6%89%A7%E8%A1%8C/image-20210105205855774.png">
+<meta property="og:image" content="http://yoursite.com/2021/01/04/%E6%B5%85%E6%9E%90-Java-%E5%91%BD%E4%BB%A4%E6%89%A7%E8%A1%8C/image-20210105211753318.png">
+<meta property="og:image" content="http://yoursite.com/2021/01/04/%E6%B5%85%E6%9E%90-Java-%E5%91%BD%E4%BB%A4%E6%89%A7%E8%A1%8C/image-20210105212003953.png">
+<meta property="og:image" content="http://yoursite.com/2021/01/04/%E6%B5%85%E6%9E%90-Java-%E5%91%BD%E4%BB%A4%E6%89%A7%E8%A1%8C/image-20210104221719003.png">
+<meta property="og:image" content="http://yoursite.com/2021/01/04/%E6%B5%85%E6%9E%90-Java-%E5%91%BD%E4%BB%A4%E6%89%A7%E8%A1%8C/image-20210105220301789.png">
+<meta property="og:image" content="http://yoursite.com/2021/01/04/%E6%B5%85%E6%9E%90-Java-%E5%91%BD%E4%BB%A4%E6%89%A7%E8%A1%8C/image-20210105220659575.png">
+<meta property="og:image" content="http://yoursite.com/2021/01/04/%E6%B5%85%E6%9E%90-Java-%E5%91%BD%E4%BB%A4%E6%89%A7%E8%A1%8C/image-20210105220920800.png">
+<meta property="og:image" content="http://yoursite.com/2021/01/04/%E6%B5%85%E6%9E%90-Java-%E5%91%BD%E4%BB%A4%E6%89%A7%E8%A1%8C/image-20210105225722972.png">
+<meta property="og:image" content="http://yoursite.com/2021/01/04/%E6%B5%85%E6%9E%90-Java-%E5%91%BD%E4%BB%A4%E6%89%A7%E8%A1%8C/image-20210105225923407.png">
+<meta property="og:image" content="http://yoursite.com/2021/01/04/%E6%B5%85%E6%9E%90-Java-%E5%91%BD%E4%BB%A4%E6%89%A7%E8%A1%8C/image-20210105225908619.png">
+<meta property="og:image" content="http://yoursite.com/2021/01/04/%E6%B5%85%E6%9E%90-Java-%E5%91%BD%E4%BB%A4%E6%89%A7%E8%A1%8C/image-20210105230506285.png">
+<meta property="og:image" content="http://yoursite.com/2021/01/04/%E6%B5%85%E6%9E%90-Java-%E5%91%BD%E4%BB%A4%E6%89%A7%E8%A1%8C/image-20210105231756910.png">
+<meta property="og:image" content="http://yoursite.com/2021/01/04/%E6%B5%85%E6%9E%90-Java-%E5%91%BD%E4%BB%A4%E6%89%A7%E8%A1%8C/1.gif">
+<meta property="og:image" content="http://yoursite.com/2021/01/04/%E6%B5%85%E6%9E%90-Java-%E5%91%BD%E4%BB%A4%E6%89%A7%E8%A1%8C/image-20210106145037368.png">
+<meta property="og:image" content="http://yoursite.com/2021/01/04/%E6%B5%85%E6%9E%90-Java-%E5%91%BD%E4%BB%A4%E6%89%A7%E8%A1%8C/image-20210106145538593.png">
+<meta property="og:image" content="http://yoursite.com/2021/01/04/%E6%B5%85%E6%9E%90-Java-%E5%91%BD%E4%BB%A4%E6%89%A7%E8%A1%8C/image-20210104221719003.png">
+<meta property="og:image" content="http://yoursite.com/2021/01/04/%E6%B5%85%E6%9E%90-Java-%E5%91%BD%E4%BB%A4%E6%89%A7%E8%A1%8C/image-20210105183122187.png">
+<meta property="article:published_time" content="2021-01-04T08:22:00.000Z">
+<meta property="article:modified_time" content="2021-07-14T16:16:57.581Z">
+<meta property="article:author" content="M13n">
+<meta property="article:tag" content="RCE">
+<meta property="article:tag" content="Java">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://yoursite.com/2021/01/04/%E6%B5%85%E6%9E%90-Java-%E5%91%BD%E4%BB%A4%E6%89%A7%E8%A1%8C/640-20210104175324690.png">
+    
+    
+        
+          
+              <link rel="shortcut icon" href="/images/favicon.ico">
+          
+        
+        
+          
+            <link rel="icon" type="image/png" href="/images/favicon-192x192.png" sizes="192x192">
+          
+        
+        
+          
+            <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png">
+          
+        
+    
+    <!-- title -->
+    <title>浅析 Java 命令执行</title>
+    <!-- styles -->
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <!-- persian styles -->
+    
+      
+<link rel="stylesheet" href="/css/rtl.css">
+
+    
+    <!-- rss -->
+    
+    
+<meta name="generator" content="Hexo 5.4.0"></head>
+
+<body class="max-width mx-auto px3 ltr">
+    
+      <div id="header-post">
+  <a id="menu-icon" href="#"><i class="fas fa-bars fa-lg"></i></a>
+  <a id="menu-icon-tablet" href="#"><i class="fas fa-bars fa-lg"></i></a>
+  <a id="top-icon-tablet" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');" style="display:none;"><i class="fas fa-chevron-up fa-lg"></i></a>
+  <span id="menu">
+    <span id="nav">
+      <ul>
+         
+          <li><a href="/">首页</a></li>
+         
+          <li><a href="/archives/">文章</a></li>
+         
+          <li><a href="/search/">搜索</a></li>
+        
+      </ul>
+    </span>
+    <br/>
+    <span id="actions">
+      <ul>
+        
+        <li><a class="icon" href="/2021/01/18/Laravel-v8-4-2-debug-mode-RCE-%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/"><i class="fas fa-chevron-left" aria-hidden="true" onmouseover="$('#i-prev').toggle();" onmouseout="$('#i-prev').toggle();"></i></a></li>
+        
+        
+        <li><a class="icon" href="/2020/12/20/ysoserial-URLDNS-%E8%B0%83%E8%AF%95%E5%88%86%E6%9E%90/"><i class="fas fa-chevron-right" aria-hidden="true" onmouseover="$('#i-next').toggle();" onmouseout="$('#i-next').toggle();"></i></a></li>
+        
+        <li><a class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fas fa-chevron-up" aria-hidden="true" onmouseover="$('#i-top').toggle();" onmouseout="$('#i-top').toggle();"></i></a></li>
+        <li><a class="icon" href="#"><i class="fas fa-share-alt" aria-hidden="true" onmouseover="$('#i-share').toggle();" onmouseout="$('#i-share').toggle();" onclick="$('#share').toggle();return false;"></i></a></li>
+      </ul>
+      <span id="i-prev" class="info" style="display:none;">上一篇</span>
+      <span id="i-next" class="info" style="display:none;">下一篇</span>
+      <span id="i-top" class="info" style="display:none;">返回顶部</span>
+      <span id="i-share" class="info" style="display:none;">分享文章</span>
+    </span>
+    <br/>
+    <div id="share" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=http://yoursite.com/2021/01/04/%E6%B5%85%E6%9E%90-Java-%E5%91%BD%E4%BB%A4%E6%89%A7%E8%A1%8C/"><i class="fab fa-facebook " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=http://yoursite.com/2021/01/04/%E6%B5%85%E6%9E%90-Java-%E5%91%BD%E4%BB%A4%E6%89%A7%E8%A1%8C/&text=浅析 Java 命令执行"><i class="fab fa-twitter " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=http://yoursite.com/2021/01/04/%E6%B5%85%E6%9E%90-Java-%E5%91%BD%E4%BB%A4%E6%89%A7%E8%A1%8C/&title=浅析 Java 命令执行"><i class="fab fa-linkedin " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=http://yoursite.com/2021/01/04/%E6%B5%85%E6%9E%90-Java-%E5%91%BD%E4%BB%A4%E6%89%A7%E8%A1%8C/&is_video=false&description=浅析 Java 命令执行"><i class="fab fa-pinterest " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=浅析 Java 命令执行&body=Check out this article: http://yoursite.com/2021/01/04/%E6%B5%85%E6%9E%90-Java-%E5%91%BD%E4%BB%A4%E6%89%A7%E8%A1%8C/"><i class="fas fa-envelope " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=http://yoursite.com/2021/01/04/%E6%B5%85%E6%9E%90-Java-%E5%91%BD%E4%BB%A4%E6%89%A7%E8%A1%8C/&title=浅析 Java 命令执行"><i class="fab fa-get-pocket " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=http://yoursite.com/2021/01/04/%E6%B5%85%E6%9E%90-Java-%E5%91%BD%E4%BB%A4%E6%89%A7%E8%A1%8C/&title=浅析 Java 命令执行"><i class="fab fa-reddit " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=http://yoursite.com/2021/01/04/%E6%B5%85%E6%9E%90-Java-%E5%91%BD%E4%BB%A4%E6%89%A7%E8%A1%8C/&title=浅析 Java 命令执行"><i class="fab fa-stumbleupon " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=http://yoursite.com/2021/01/04/%E6%B5%85%E6%9E%90-Java-%E5%91%BD%E4%BB%A4%E6%89%A7%E8%A1%8C/&title=浅析 Java 命令执行"><i class="fab fa-digg " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=http://yoursite.com/2021/01/04/%E6%B5%85%E6%9E%90-Java-%E5%91%BD%E4%BB%A4%E6%89%A7%E8%A1%8C/&name=浅析 Java 命令执行&description=&lt;p&gt;对 Java 命令执行过程中的流程以及利用坑点进行学习分析&lt;/p&gt;"><i class="fab fa-tumblr " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=http://yoursite.com/2021/01/04/%E6%B5%85%E6%9E%90-Java-%E5%91%BD%E4%BB%A4%E6%89%A7%E8%A1%8C/&t=浅析 Java 命令执行"><i class="fab fa-hacker-news " aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+    <div id="toc">
+      <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#Preface"><span class="toc-number">1.</span> <span class="toc-text">Preface</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#How-to-Command-execution"><span class="toc-number">2.</span> <span class="toc-text">How to Command execution</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#java-lang-Runtime-exec"><span class="toc-number">2.1.</span> <span class="toc-text">java.lang.Runtime#exec()</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#java-lang-ProcessBuilder-start"><span class="toc-number">2.2.</span> <span class="toc-text">java.lang.ProcessBuilder#start()</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#java-lang-ProcessImpl"><span class="toc-number">2.3.</span> <span class="toc-text">java.lang.ProcessImpl</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#How-to-getshell-by-java-lang-Runtime-exec"><span class="toc-number">3.</span> <span class="toc-text">How to getshell by java.lang.Runtime#exec()</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#getshell"><span class="toc-number">3.1.</span> <span class="toc-text">getshell</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#wget-and-curl"><span class="toc-number">3.2.</span> <span class="toc-text">wget and curl</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#String-cmdarray"><span class="toc-number">3.3.</span> <span class="toc-text">String[] cmdarray</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#String-command-base64encode"><span class="toc-number">3.4.</span> <span class="toc-text">String command + base64encode</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#End"><span class="toc-number">4.</span> <span class="toc-text">End</span></a></li></ol>
+    </div>
+  </span>
+</div>
+
+    
+    <div class="content index py4">
+        
+        <article class="post" itemscope itemtype="http://schema.org/BlogPosting">
+  <header>
+    
+    <h1 class="posttitle" itemprop="name headline">
+        浅析 Java 命令执行
+    </h1>
+
+
+
+    <div class="meta">
+      <span class="author" itemprop="author" itemscope itemtype="http://schema.org/Person">
+        <span itemprop="name">M13n's Blog</span>
+      </span>
+      
+    <div class="postdate">
+      
+        <time datetime="2021-01-04T08:22:00.000Z" itemprop="datePublished">2021-01-04</time>
+        
+      
+    </div>
+
+
+      
+    <div class="article-category">
+        <i class="fas fa-archive"></i>
+        <a class="category-link" href="/categories/Java-Sec/">Java Sec</a>
+    </div>
+
+
+      
+    <div class="article-tag">
+        <i class="fas fa-tag"></i>
+        <a class="tag-link-link" href="/tags/Java/" rel="tag">Java</a>, <a class="tag-link-link" href="/tags/RCE/" rel="tag">RCE</a>
+    </div>
+
+
+    </div>
+  </header>
+  
+
+  <div class="content" itemprop="articleBody">
+    <p>对 Java 命令执行过程中的流程以及利用坑点进行学习分析</p>
+<span id="more"></span>
+
+<h1 id="Preface"><a href="#Preface" class="headerlink" title="Preface"></a>Preface</h1><p>Java 的大多数攻击的最后调用都在命令执行这个地方，而命令执行涉及的方方面面还是大有可深究</p>
+<p>本文从以下几个维度分析 Java 命令执行</p>
+<ul>
+<li>How to Command execution</li>
+<li>How to getshell</li>
+</ul>
+<h1 id="How-to-Command-execution"><a href="#How-to-Command-execution" class="headerlink" title="How to Command execution"></a>How to Command execution</h1><p>首先谈一下 Java 当中究竟有哪些方式可以进行命令执行</p>
+<ul>
+<li>java.lang.Runtime#exec()</li>
+<li>java.lang.ProcessBuilder#start()</li>
+<li>java.lang.ProcessImpl#start()</li>
+<li>更多（如 <strong>JNI 调用动态链接库</strong>、<strong>Unsafe</strong> 类、<strong>defineClass()</strong> 等，不在本文探讨范围）</li>
+</ul>
+<p><img src="/2021/01/04/%E6%B5%85%E6%9E%90-Java-%E5%91%BD%E4%BB%A4%E6%89%A7%E8%A1%8C/640-20210104175324690.png" alt="图片"></p>
+<h2 id="java-lang-Runtime-exec"><a href="#java-lang-Runtime-exec" class="headerlink" title="java.lang.Runtime#exec()"></a>java.lang.Runtime#exec()</h2><p>先看一下源码</p>
+<p><img src="/2021/01/04/%E6%B5%85%E6%9E%90-Java-%E5%91%BD%E4%BB%A4%E6%89%A7%E8%A1%8C/image-20210205161800399.png" alt="image-20210205161800399"></p>
+<p>首先 java.lang.Runtime 是一个单例模式，它不能被实例化，只能通过 <code>getRuntime</code> 获得对象，具体可参考: <a target="_blank" rel="noopener" href="https://www.runoob.com/design-pattern/singleton-pattern.html">单例模式</a></p>
+<p>看一个最简单的命令执行的例子</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">package</span> exec;</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> java.io.IOException;</span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">ExecDemo00</span> </span>&#123;</span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span> <span class="keyword">throws</span> IOException </span>&#123;</span><br><span class="line">        Process  procdemo = Runtime.getRuntime().exec(<span class="string">&quot;open -a calculator&quot;</span>);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>成功弹出了计算器，那么其实在命令执行的更多利用方式上，光弹一个计算器是不够的</p>
+<p><strong>因为我们在很多场景下需要其回显功能</strong></p>
+<p>由此一般的命令执行代码如下；</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">package</span> exec;</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> java.io.ByteArrayOutputStream;</span><br><span class="line"><span class="keyword">import</span> java.io.IOException;</span><br><span class="line"><span class="keyword">import</span> java.io.InputStream;</span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">ExecDemo01</span> </span>&#123;</span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span> <span class="keyword">throws</span> IOException </span>&#123;</span><br><span class="line">        <span class="comment">/**</span></span><br><span class="line"><span class="comment">         * 获取 Process 类</span></span><br><span class="line"><span class="comment">         */</span></span><br><span class="line">        Process procexec = Runtime.getRuntime().exec(<span class="string">&quot;whoami&quot;</span>);</span><br><span class="line">        <span class="comment">/**</span></span><br><span class="line"><span class="comment">         * 获取输入流、子进程标准输出</span></span><br><span class="line"><span class="comment">         */</span></span><br><span class="line">        InputStream ins = procexec.getInputStream();</span><br><span class="line">        <span class="comment">/**</span></span><br><span class="line"><span class="comment">         * 创建 ByteArrayOutputStream 缓冲区</span></span><br><span class="line"><span class="comment">         */</span></span><br><span class="line">        ByteArrayOutputStream bos = <span class="keyword">new</span> ByteArrayOutputStream();</span><br><span class="line">        <span class="keyword">byte</span>[] bytes = <span class="keyword">new</span> <span class="keyword">byte</span>[<span class="number">1024</span>];</span><br><span class="line">        <span class="keyword">int</span> size;</span><br><span class="line">        <span class="comment">/**</span></span><br><span class="line"><span class="comment">         * ins.read(bytes) 从输入流中读取一定数量的字节，并将其存储到缓冲区数组中 bytes</span></span><br><span class="line"><span class="comment">         * 返回值：读入缓冲区的总字节数，或者 -1 由于到达流的末尾而没有更多数据。</span></span><br><span class="line"><span class="comment">         */</span></span><br><span class="line">        <span class="keyword">while</span> ((size = ins.read(bytes)) &gt; <span class="number">0</span> )&#123;</span><br><span class="line">            <span class="comment">/**</span></span><br><span class="line"><span class="comment">             * 将 size 指定字节数组中从偏移量开始的字节写入此数组输出流</span></span><br><span class="line"><span class="comment">             */</span></span><br><span class="line">            bos.write(bytes, <span class="number">0</span>, size);</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="comment">/**</span></span><br><span class="line"><span class="comment">         * 通过解码字节将缓冲区内容转换为字符串。</span></span><br><span class="line"><span class="comment">         */</span></span><br><span class="line">        System.out.println(bos.toString());</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>那么为什么上述代码能够获取回显呢？</p>
+<p>先回顾一下 <code>Runtime.exec()</code> 的作用。其实命令执行只是我们对结果的一个统称。那么它其实真正的作用是：</p>
+<p><strong>创建一个本地进程，并返回Process子类的一个实例，该实例可用来控制进程并获取相关信息。</strong></p>
+<p>对比一下之前的例子，我们发现其实关键出现在 <code>getInputStream</code> 这里</p>
+<p>那么我们发现其实 <code>getInputStream</code>是 Process 类的API</p>
+<p><img src="/2021/01/04/%E6%B5%85%E6%9E%90-Java-%E5%91%BD%E4%BB%A4%E6%89%A7%E8%A1%8C/image-20210104230049823.png" alt="image-20210104230049823"></p>
+<p>之后创建 <code>ByteArrayOutputStream</code> 然后转换出来即可</p>
+<p>网上很多文章说这里的<code>getInputStream</code> 的作用就只说了一个获取输入流，之前很困惑为什么获取输入流可以获取命令执行的结果，不太理解输入流跟命令执行输出的关系，后来看了下官方文档，发现官方文档的返回值写的很清楚<img src="/2021/01/04/%E6%B5%85%E6%9E%90-Java-%E5%91%BD%E4%BB%A4%E6%89%A7%E8%A1%8C/image-20210104221719003.png">大概这里的输入流不是字面意思上的理解的那种，反正会获取子流程正常输出内容就对了</p>
+<p>看一下官方的定义</p>
+<blockquote>
+<p> <strong>getInputStream</strong></p>
+ <figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">public abstract InputStream getInputStream()</span><br></pre></td></tr></table></figure>
+
+<p> Returns the input stream connected to the normal output of the subprocess. The stream obtains data piped from the standard output of the process represented by this <code>Process</code> object.</p>
+<p> If the standard output of the subprocess has been redirected using <a target="_blank" rel="noopener" href="https://docs.oracle.com/javase/8/docs/api/java/lang/ProcessBuilder.html#redirectOutput-java.lang.ProcessBuilder.Redirect-"><code>ProcessBuilder.redirectOutput</code></a> then this method will return a <a target="_blank" rel="noopener" href="https://docs.oracle.com/javase/8/docs/api/java/lang/ProcessBuilder.html#redirect-output">null input stream</a>.</p>
+<p> Otherwise, if the standard error of the subprocess has been redirected using <a target="_blank" rel="noopener" href="https://docs.oracle.com/javase/8/docs/api/java/lang/ProcessBuilder.html#redirectErrorStream-boolean-"><code>ProcessBuilder.redirectErrorStream</code></a> then the input stream returned by this method will receive the merged standard output and the standard error of the subprocess.</p>
+<p> Implementation note: It is a good idea for the returned input stream to be buffered.</p>
+<ul>
+<li><strong>Returns:</strong></li>
+</ul>
+<p>  the input stream connected to the normal output of the subprocess</p>
+</blockquote>
+<p>那么联想到 Weblogic 2725 的获取回显的思路也是在 Weblogic中获取到当前线程类，然后定位到输出类，最后获取的回显信息。</p>
+<h2 id="java-lang-ProcessBuilder-start"><a href="#java-lang-ProcessBuilder-start" class="headerlink" title="java.lang.ProcessBuilder#start()"></a>java.lang.ProcessBuilder#start()</h2><blockquote>
+<p>ProcessBuilder是一个final类，Process是一个抽象类。<code>ProcessBuilder.start()</code> 和 <code>Runtime.exec()</code> 方法都被用来创建一个操作系统进程（执行命令行操作），并返回 <code>Process</code> 子类的一个实例，该实例可用来控制进程状态并获得相关信息。</p>
+</blockquote>
+<p><code>ProcessBuilder.start()</code> 只支持字符串数组参数，且 第一个参数必须是可执行程序，可以添加参数使用<code>&#123;&quot;cmd&quot;, &quot;/c&quot;&#125;</code> 或 <code>&#123;&quot;/bin/bash&quot;, &quot;-c&quot;&#125;</code></p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">package</span> exec;</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> java.io.ByteArrayOutputStream;</span><br><span class="line"><span class="keyword">import</span> java.io.IOException;</span><br><span class="line"><span class="keyword">import</span> java.io.InputStream;</span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">ExecDemo02</span> </span>&#123;</span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span> <span class="keyword">throws</span> IOException </span>&#123;</span><br><span class="line">        String[] cmds = &#123;<span class="string">&quot;/bin/bash&quot;</span>, <span class="string">&quot;-c&quot;</span>, <span class="string">&quot;whoami&quot;</span>&#125;;</span><br><span class="line">        Process procexec = <span class="keyword">new</span> ProcessBuilder(cmds).start();</span><br><span class="line">        InputStream ins = procexec.getInputStream();</span><br><span class="line">        ByteArrayOutputStream bos = <span class="keyword">new</span> ByteArrayOutputStream();</span><br><span class="line">        <span class="keyword">byte</span>[] bytes = <span class="keyword">new</span> <span class="keyword">byte</span>[<span class="number">1024</span>];</span><br><span class="line">        <span class="keyword">int</span> size;</span><br><span class="line">        <span class="keyword">while</span> ((size = ins.read(bytes)) &gt; <span class="number">0</span> )&#123;</span><br><span class="line">            bos.write(bytes, <span class="number">0</span>, size);</span><br><span class="line">        &#125;</span><br><span class="line">        System.out.println(bos.toString());</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+
+<h2 id="java-lang-ProcessImpl"><a href="#java-lang-ProcessImpl" class="headerlink" title="java.lang.ProcessImpl"></a>java.lang.ProcessImpl</h2><p>通过之前的图我们也可以知道 <code>java.lang.ProcessImpl</code> 是更为底层的实现。</p>
+<p>特点是不能直接调用，需要通过反射去间接调用</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">package</span> exec;</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> java.io.ByteArrayOutputStream;</span><br><span class="line"><span class="keyword">import</span> java.io.IOException;</span><br><span class="line"><span class="keyword">import</span> java.io.InputStream;</span><br><span class="line"><span class="keyword">import</span> java.lang.reflect.InvocationTargetException;</span><br><span class="line"><span class="keyword">import</span> java.lang.reflect.Method;</span><br><span class="line"><span class="keyword">import</span> java.util.Map;</span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">ExecDemo03</span> </span>&#123;</span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span> <span class="keyword">throws</span> ClassNotFoundException, NoSuchMethodException, InvocationTargetException, IllegalAccessException, IOException </span>&#123;</span><br><span class="line">        String[] cmds = &#123;<span class="string">&quot;whoami&quot;</span>&#125;;</span><br><span class="line">        Class clz = Class.forName(<span class="string">&quot;java.lang.ProcessImpl&quot;</span>);</span><br><span class="line">        Method method = clz.getDeclaredMethod(<span class="string">&quot;start&quot;</span>, String[].class, Map.class, String.class, ProcessBuilder.Redirect[].class, <span class="keyword">boolean</span>.class);</span><br><span class="line">        method.setAccessible(<span class="keyword">true</span>);</span><br><span class="line">        Process procexec = (Process) method.invoke(<span class="keyword">null</span>,cmds, <span class="keyword">null</span>, <span class="string">&quot;.&quot;</span>, <span class="keyword">null</span>, <span class="keyword">true</span>);</span><br><span class="line">        InputStream ins = procexec.getInputStream();</span><br><span class="line">        ByteArrayOutputStream bos = <span class="keyword">new</span> ByteArrayOutputStream();</span><br><span class="line">        <span class="keyword">byte</span>[] bytes = <span class="keyword">new</span> <span class="keyword">byte</span>[<span class="number">1024</span>];</span><br><span class="line">        <span class="keyword">int</span> size;</span><br><span class="line">        <span class="keyword">while</span> ((size = ins.read(bytes)) &gt; <span class="number">0</span> )&#123;</span><br><span class="line">            bos.write(bytes, <span class="number">0</span>, size);</span><br><span class="line">        &#125;</span><br><span class="line">        System.out.println(bos.toString());</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+
+<h1 id="How-to-getshell-by-java-lang-Runtime-exec"><a href="#How-to-getshell-by-java-lang-Runtime-exec" class="headerlink" title="How to getshell by java.lang.Runtime#exec()"></a>How to getshell by java.lang.Runtime#exec()</h1><h2 id="getshell"><a href="#getshell" class="headerlink" title="getshell"></a>getshell</h2><p><code>java.lang.Runtime#exec()</code> 作为 Java 里最常见进行命令执行的方法。我们下文探究如何通过其进行 getshell</p>
+<ul>
+<li>wget 或者 curl 下载文件</li>
+<li>echo 写入webshell<ul>
+<li>String[] cmdarray</li>
+<li>String command + base64encode</li>
+</ul>
+</li>
+</ul>
+<h2 id="wget-and-curl"><a href="#wget-and-curl" class="headerlink" title="wget and curl"></a>wget and curl</h2><ul>
+<li>优势<ul>
+<li>操作便捷 </li>
+<li>可以下载可执行文件</li>
+</ul>
+</li>
+<li>缺陷<ul>
+<li>受限于网络环境</li>
+</ul>
+</li>
+</ul>
+<p>wget</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line">Runtime.getRuntime().exec(<span class="string">&quot;wget https://p2hm1n.com/images/logo.png&quot;</span>);</span><br></pre></td></tr></table></figure>
+
+
+
+<p>curl</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line">Runtime.getRuntime().exec(<span class="string">&quot;curl -O https://p2hm1n.com/images/logo.png&quot;</span>);</span><br></pre></td></tr></table></figure>
+
+
+
+<h2 id="String-cmdarray"><a href="#String-cmdarray" class="headerlink" title="String[] cmdarray"></a>String[] cmdarray</h2><ul>
+<li>优势<ul>
+<li>相比于 wget / curl 不受限于网络环境</li>
+</ul>
+</li>
+<li>缺陷<ul>
+<li>兼容性较差，比如有的系统固定命令执行方式</li>
+</ul>
+</li>
+</ul>
+<p>前提：getshell的过程中需要写入 webshell，而写入 Webshell 的命令形如</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line"><span class="built_in">echo</span> <span class="string">&quot;flag&quot;</span> &gt; flag.txt</span><br></pre></td></tr></table></figure>
+
+<p>但是利用 <code>java.lang.Runtime#exec(String command)</code> 直接执行无法写入文件 </p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line">Runtime.getRuntime().exec(<span class="string">&quot;echo \&quot;flag\&quot; &gt; flag.txt&quot;</span>);</span><br></pre></td></tr></table></figure>
+
+<p>如果想写入文件的话，需要使用如下命令</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">// linux</span></span><br><span class="line">Runtime.getRuntime().exec(<span class="keyword">new</span> String[]&#123;<span class="string">&quot;/bin/sh&quot;</span>, <span class="string">&quot;-c&quot;</span>, <span class="string">&quot;echo \&quot;flag\&quot; &gt; flag.txt&quot;</span>&#125;);</span><br><span class="line"></span><br><span class="line"><span class="comment">// windows</span></span><br><span class="line">Runtime.getRuntime().exec(<span class="keyword">new</span> String[]&#123;<span class="string">&quot;cmd&quot;</span>, <span class="string">&quot;/c&quot;</span>, <span class="string">&quot;echo \&quot;flag\&quot; &gt; flag.txt&quot;</span>&#125;);</span><br></pre></td></tr></table></figure>
+
+<p>究其原因 <code>java.lang.Runtime</code> 中其实有 6 个 <code>exec </code> 的重载方法</p>
+<p><img src="/2021/01/04/%E6%B5%85%E6%9E%90-Java-%E5%91%BD%E4%BB%A4%E6%89%A7%E8%A1%8C/image-20210104234608650.png" alt="image-20210104234608650"></p>
+<p>查了下官方文档，大概如下：</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"></span><br><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * 在单独的进程中执行指定的字符串命令</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> Process <span class="title">exec</span><span class="params">(String command)</span></span></span><br><span class="line"><span class="function">        <span class="keyword">throws</span> IOException</span></span><br><span class="line"><span class="function"></span></span><br><span class="line"><span class="function"></span></span><br><span class="line"><span class="function"><span class="comment">/**</span></span></span><br><span class="line"><span class="comment"><span class="function"> * 在具有指定环境的单独进程中执行指定的字符串命令</span></span></span><br><span class="line"><span class="comment"><span class="function"> */</span></span></span><br><span class="line"><span class="function"><span class="keyword">public</span> Process <span class="title">exec</span><span class="params">(String command,</span></span></span><br><span class="line"><span class="params"><span class="function">                    String[] envp)</span></span></span><br><span class="line"><span class="function">        <span class="keyword">throws</span> IOException</span></span><br><span class="line"><span class="function"></span></span><br><span class="line"><span class="function"></span></span><br><span class="line"><span class="function"><span class="comment">/**</span></span></span><br><span class="line"><span class="comment"><span class="function"> * 在具有指定环境和工作目录的单独进程中执行指定的字符串命令</span></span></span><br><span class="line"><span class="comment"><span class="function"> */</span></span></span><br><span class="line"><span class="function"><span class="keyword">public</span> Process <span class="title">exec</span><span class="params">(String command,</span></span></span><br><span class="line"><span class="params"><span class="function">                    String[] envp,</span></span></span><br><span class="line"><span class="params"><span class="function">                    File dir)</span></span></span><br><span class="line"><span class="function">        <span class="keyword">throws</span> IOException</span></span><br><span class="line"><span class="function"></span></span><br><span class="line"><span class="function"></span></span><br><span class="line"><span class="function"><span class="comment">/**</span></span></span><br><span class="line"><span class="comment"><span class="function"> * 在单独的进程中执行指定的命令和参数。</span></span></span><br><span class="line"><span class="comment"><span class="function"> */</span></span></span><br><span class="line"><span class="function"><span class="keyword">public</span> Process <span class="title">exec</span><span class="params">(String[] cmdarray)</span></span></span><br><span class="line"><span class="function">        <span class="keyword">throws</span> IOException</span></span><br><span class="line"><span class="function"></span></span><br><span class="line"><span class="function"></span></span><br><span class="line"><span class="function"><span class="comment">/**</span></span></span><br><span class="line"><span class="comment"><span class="function"> * 在具有指定环境的单独进程中执行指定的命令和参数</span></span></span><br><span class="line"><span class="comment"><span class="function"> */</span></span></span><br><span class="line"><span class="function"><span class="keyword">public</span> Process <span class="title">exec</span><span class="params">(String[] cmdarray,</span></span></span><br><span class="line"><span class="params"><span class="function">                    String[] envp)</span></span></span><br><span class="line"><span class="function">        <span class="keyword">throws</span> IOException</span></span><br><span class="line"><span class="function"></span></span><br><span class="line"><span class="function"></span></span><br><span class="line"><span class="function"><span class="comment">/**</span></span></span><br><span class="line"><span class="comment"><span class="function"> * 在具有指定环境和工作目录的单独进程中执行指定的命令和参数</span></span></span><br><span class="line"><span class="comment"><span class="function"> */</span></span></span><br><span class="line"><span class="function"><span class="keyword">public</span> Process <span class="title">exec</span><span class="params">(String[] cmdarray,</span></span></span><br><span class="line"><span class="params"><span class="function">                    String[] envp,</span></span></span><br><span class="line"><span class="params"><span class="function">                    File dir)</span></span></span><br><span class="line"><span class="function">        <span class="keyword">throws</span> IOException</span></span><br><span class="line"><span class="function"></span></span><br></pre></td></tr></table></figure>
+
+<p>下面进行命令执行解析流程分析：</p>
+<p>首先分析 </p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line">Runtime.getRuntime().exec(<span class="string">&quot;echo \&quot;flag\&quot; &gt; flag.txt&quot;</span>);</span><br></pre></td></tr></table></figure>
+
+<p>首先将命令完全传给了 command 参数，返回值形如 <code>exec(command, null, null);</code></p>
+<p><img src="/2021/01/04/%E6%B5%85%E6%9E%90-Java-%E5%91%BD%E4%BB%A4%E6%89%A7%E8%A1%8C/image-20210105150858270.png" alt="image-20210105150858270"></p>
+<p>这一步传入的参数为 <code>command</code>，跟进分析</p>
+<p><img src="/2021/01/04/%E6%B5%85%E6%9E%90-Java-%E5%91%BD%E4%BB%A4%E6%89%A7%E8%A1%8C/image-20210105151115015.png" alt="image-20210105151115015"></p>
+<p>经过如下处理：</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line">java.util.StringTokenizer#StringTokenizer(java.lang.String)</span><br><span class="line">-&gt;</span><br><span class="line">  java.util.StringTokenizer#StringTokenizer(java.lang.String, java.lang.String, <span class="keyword">boolean</span>)</span><br><span class="line">  -&gt;</span><br><span class="line">  	java.util.StringTokenizer#setMaxDelimCodePoint</span><br><span class="line">-&gt;</span><br><span class="line">java.util.StringTokenizer#countTokens</span><br></pre></td></tr></table></figure>
+
+<p>最后转换成了 cmdarray。将原本传入的参数值进行了切割，转换成了数组，最后再次调用 <code>exec</code> 重载方法</p>
+<p><img src="/2021/01/04/%E6%B5%85%E6%9E%90-Java-%E5%91%BD%E4%BB%A4%E6%89%A7%E8%A1%8C/image-20210105151526661.png" alt="image-20210105151526661"></p>
+<p>调用到 <code>java.lang.Runtime#exec(java.lang.String[], java.lang.String[], java.io.File)</code>。后续调用</p>
+<p><code>java.lang.ProcessBuilder#start</code> 来进行命令执行</p>
+<p><img src="/2021/01/04/%E6%B5%85%E6%9E%90-Java-%E5%91%BD%E4%BB%A4%E6%89%A7%E8%A1%8C/image-20210105152752920.png" alt="image-20210105152752920"></p>
+<p>知识点一：</p>
+<p>java.lang.Runtime 中 6个 exec 的重载方法根据参数不同进行区分，主要是传入字符串跟数组两种形式，但最终调用都在<code>java.lang.Runtime#exec(java.lang.String[], java.lang.String[], java.io.File)</code> 这里，该函数内部首先调用ProcessBuilder类的构造函数创建ProcessBuilder对象，然后调用start()，最终返回一个Process对象。</p>
+<p>知识点二：</p>
+<p>Runtime#exec()底层还是调用的ProcessBuilder#start()，且传入构造函数的参数要求是数组类型。所以传给Runtime#exec()的命令字符串需要先使用StringTokenizer类分割为数组再传入ProcessBuilder类</p>
+<p>这里同时解释了命令执行的底层关系，以及解释了 <code>ProcessBuilder#start()</code> 传入参数值的问题。但似乎还没有解决我们之前遗留的写入 webshell 的问题。</p>
+<p>到这里先暂停一下。因为我们知道 Runtime#exec()底层还是调用的 ProcessBuilder#start()。所以我们的变量控制的范围应该在这里先停下。</p>
+<p>因为我们得知道 <code>ProcessBuilder#start()</code> 需要什么样的命令格式，我们才能去控制 <code>Runtime#exec</code> 的参数去调整，又因为 <code>ProcessBuilder#start()</code> 最后会调用到 <code>ProcessImpl.start()</code></p>
+<p>我们看一下以下三种情况传入到  <code>ProcessImpl.start()</code>  的状态</p>
+<ol>
+<li></li>
+</ol>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line">Runtime.getRuntime().exec(<span class="string">&quot;echo echo flag &gt; flag.txt&quot;</span>);</span><br></pre></td></tr></table></figure>
+
+<p><img src="/2021/01/04/%E6%B5%85%E6%9E%90-Java-%E5%91%BD%E4%BB%A4%E6%89%A7%E8%A1%8C/image-20210105195813557.png" alt="image-20210105195813557"></p>
+<ol start="2">
+<li></li>
+</ol>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line">Runtime.getRuntime().exec(<span class="string">&quot;/bin/sh -c echo flag &gt; flag.txt&quot;</span>);</span><br></pre></td></tr></table></figure>
+
+<p><img src="/2021/01/04/%E6%B5%85%E6%9E%90-Java-%E5%91%BD%E4%BB%A4%E6%89%A7%E8%A1%8C/image-20210105195931773.png" alt="image-20210105195931773"></p>
+<ol start="3">
+<li></li>
+</ol>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line">Runtime.getRuntime().exec(<span class="keyword">new</span> String[]&#123;<span class="string">&quot;/bin/sh&quot;</span>, <span class="string">&quot;-c&quot;</span>, <span class="string">&quot;echo flag &gt; flag.txt&quot;</span>&#125;);</span><br></pre></td></tr></table></figure>
+
+<p><img src="/2021/01/04/%E6%B5%85%E6%9E%90-Java-%E5%91%BD%E4%BB%A4%E6%89%A7%E8%A1%8C/image-20210105191140624.png" alt="image-20210105191140624"></p>
+<p><strong>着重看第三种方法</strong></p>
+<p>这里可以发现是直接 return 到 <code>java.lang.Runtime#exec(java.lang.String[], java.lang.String[], java.io.File)</code> 的</p>
+<p><img src="/2021/01/04/%E6%B5%85%E6%9E%90-Java-%E5%91%BD%E4%BB%A4%E6%89%A7%E8%A1%8C/image-20210105201427968.png" alt="image-20210105201427968"></p>
+<p>然后直接进行后面的调用 </p>
+<p><img src="/2021/01/04/%E6%B5%85%E6%9E%90-Java-%E5%91%BD%E4%BB%A4%E6%89%A7%E8%A1%8C/image-20210105201541913.png" alt="image-20210105201541913"></p>
+<p><strong>划重点：不会经过 <code>StringTokenizer</code> 进行字符串处理</strong></p>
+<p>经过实验我们知道只有 第三种 是可以输出到一个文件的，究其核心原因在于 <code>StringTokenizer</code> 对字符串的分割破坏了原有的语义，而直接传入数组类型字符串则由自己分割字符串</p>
+<p>而第一种不能直接执行的原因是因为 Linux 下执行命令前面需要加上  <code>/bin/sh -c</code>，详见后面分析。</p>
+<p>回到我们的分析，之前的分析已经调用到 <code>ProcessImpl.start()</code> 了</p>
+<p><code>java.lang.Process</code> 里这里有一个操作：</p>
+<blockquote>
+<p>取出 cmdarray[0] 赋值给prog,如果安全管理器 SecurityManager 开启,会调用SecurityManager#checkExec()对执行程序prog进行检查</p>
+</blockquote>
+<p>跟据注释可以看到这段代码的用途 ： Throws IndexOutOfBoundsException if command is empty</p>
+<p><img src="/2021/01/04/%E6%B5%85%E6%9E%90-Java-%E5%91%BD%E4%BB%A4%E6%89%A7%E8%A1%8C/image-20210105214313973.png" alt="image-20210105214313973"></p>
+<p>随后返回一个 <code>new UNIXProcess()</code></p>
+<p><img src="/2021/01/04/%E6%B5%85%E6%9E%90-Java-%E5%91%BD%E4%BB%A4%E6%89%A7%E8%A1%8C/image-20210105214108311.png" alt="image-20210105214108311"></p>
+<p>针对第一个参数的处理在 <code>java.lang.ProcessImpl#toCString</code></p>
+<p><img src="/2021/01/04/%E6%B5%85%E6%9E%90-Java-%E5%91%BD%E4%BB%A4%E6%89%A7%E8%A1%8C/image-20210105213850286.png" alt="image-20210105213850286"></p>
+<p>针对除第一个参数之外的处理在之前就已经完成</p>
+<p><img src="/2021/01/04/%E6%B5%85%E6%9E%90-Java-%E5%91%BD%E4%BB%A4%E6%89%A7%E8%A1%8C/image-20210105214745759.png" alt="image-20210105214745759"></p>
+<p>之后调用到 <code>java.lang.UNIXProcess#UNIXProcess</code></p>
+<p><img src="/2021/01/04/%E6%B5%85%E6%9E%90-Java-%E5%91%BD%E4%BB%A4%E6%89%A7%E8%A1%8C/image-20210105205855774.png" alt="image-20210105205855774"></p>
+<p>这里还会调用 <code>forkAndExec</code> 方法，这个方法是一个 native 方法（会调用 C 语言之类的）</p>
+<p>看一下此时的参数分割</p>
+<p><img src="/2021/01/04/%E6%B5%85%E6%9E%90-Java-%E5%91%BD%E4%BB%A4%E6%89%A7%E8%A1%8C/image-20210105211753318.png" alt="image-20210105211753318"></p>
+<blockquote>
+<p>在开发者的眼中prog是要执行的命令, argBlock都是传给 prog 的参数。</p>
+<p>可见经过 StringTokenizer 对字符串中空格类的处理其实是一种java对命令执行的保护机制，他可以防御以下这种命令注入</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line">&gt;String cmd = <span class="string">&quot;echo &quot;</span> + 可控点;</span><br><span class="line">&gt;Runtime.getRuntime().exec(cmd)</span><br></pre></td></tr></table></figure>
+</blockquote>
+<p>题外话：站在开发的角度来看这也确实是 Java 相比 PHP 在防止命令注入的场景天然的优势了</p>
+<p>启动了一个 sh 进程</p>
+<p><img src="/2021/01/04/%E6%B5%85%E6%9E%90-Java-%E5%91%BD%E4%BB%A4%E6%89%A7%E8%A1%8C/image-20210105212003953.png" alt="image-20210105212003953"></p>
+<p>那第二种为什么不行呢，看一下第二种的参数分割。</p>
+<p>依照我的理解：既然 argBlock 是传递给 prog 的参数，所以当 echo 后面的东西分快传播就会破坏原来的语义，因此不能正常解析 （我也不知道这样理解对不对<img src="/2021/01/04/%E6%B5%85%E6%9E%90-Java-%E5%91%BD%E4%BB%A4%E6%89%A7%E8%A1%8C/image-20210104221719003.png"> ）</p>
+<p><img src="/2021/01/04/%E6%B5%85%E6%9E%90-Java-%E5%91%BD%E4%BB%A4%E6%89%A7%E8%A1%8C/image-20210105220301789.png" alt="image-20210105220301789"></p>
+<p>这样虽然也能启一个sh进程，但由于不能正常解析，所以不会写入文件</p>
+<p><img src="/2021/01/04/%E6%B5%85%E6%9E%90-Java-%E5%91%BD%E4%BB%A4%E6%89%A7%E8%A1%8C/image-20210105220659575.png" alt="image-20210105220659575"></p>
+<p>而第一个方法显然不能启动一个 sh 进程，因此在 Linux 下第一个传入的参数需要为 <code>/bin/sh</code>，所以第一种不行。</p>
+<p><img src="/2021/01/04/%E6%B5%85%E6%9E%90-Java-%E5%91%BD%E4%BB%A4%E6%89%A7%E8%A1%8C/image-20210105220920800.png" alt="image-20210105220920800"></p>
+<p>关于 Windows 的分析可以参考 360BugCloud 的《浅析Java命令执行》：</p>
+<blockquote>
+<p><strong>需要添加cmd /c的原因:</strong></p>
+<p>在传入  echo_test &gt; echo.txt 命令字符串时，出现错误(“java.io.IOException: Cannot run program “echo”: CreateProcess error=2, 系统找不到指定的文件。”)。原因是echo为命令行解释器cmd.exe的内置命令，并不是一个单独可执行的程序(如下图)，所以如果想执行echo命令写文件需要先启动cmd.exe，然后将echo命令做为cmd.exe的参数进行执行。</p>
+<p>另外关于cmd下的 /c 参数，当未指定时,运行如下示例程序,系统会启动一个pid为8984的cmd后台进程，由于cmd进程未终止导致java程序卡死。当指定/c时，cmd进程会在命令执行完毕后成功终止。</p>
+<p><strong>所以在Windows环境下，使用Runtime.getRuntime()执行的命令前缀需要加上cmd /c，使得底层Windows的processthreadsapi.h#CreateProcessW()方法在创建新进程时，可以正确识别cmd且成功返回命令执行结果。</strong></p>
+</blockquote>
+<h2 id="String-command-base64encode"><a href="#String-command-base64encode" class="headerlink" title="String command + base64encode"></a>String command + base64encode</h2><ul>
+<li><p>优势</p>
+<ul>
+<li>适用于字符串命令传参</li>
+</ul>
+</li>
+<li><p>缺点</p>
+<ul>
+<li>无</li>
+</ul>
+</li>
+</ul>
+<p>字符串命令传参的情况下可以通过 @jackson 这个国外研究员的方式解决：<a target="_blank" rel="noopener" href="http://www.jackson-t.ca/runtime-exec-payloads.html">http://www.jackson-t.ca/runtime-exec-payloads.html</a></p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line">Process  procdemo = Runtime.getRuntime().exec(<span class="string">&quot;bash -c &#123;echo,ZWNobyBmbGFnID4gZmxhZy50eHQ=&#125;|&#123;base64,-d&#125;|&#123;bash,-i&#125;&quot;</span>);</span><br></pre></td></tr></table></figure>
+
+<p>下面进行简单的分析</p>
+<p>这里可以看到因为没有空格的原因，即使经过 <code>StringTokenizer</code> 处理，依然只分割成了三个参数</p>
+<p><img src="/2021/01/04/%E6%B5%85%E6%9E%90-Java-%E5%91%BD%E4%BB%A4%E6%89%A7%E8%A1%8C/image-20210105225722972.png" alt="image-20210105225722972"></p>
+<p>最后传入 <code>java.lang.UNIXProcess#forkAndExec</code> 时也是如我们所期望的那样</p>
+<p><img src="/2021/01/04/%E6%B5%85%E6%9E%90-Java-%E5%91%BD%E4%BB%A4%E6%89%A7%E8%A1%8C/image-20210105225923407.png" alt="image-20210105225923407"></p>
+<p><img src="/2021/01/04/%E6%B5%85%E6%9E%90-Java-%E5%91%BD%E4%BB%A4%E6%89%A7%E8%A1%8C/image-20210105225908619.png" alt="image-20210105225908619"></p>
+<p>那么这个payload的构造有什么巧妙？</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">bash -c &#123;<span class="built_in">echo</span>,ZWNobyBmbGFnID4gZmxhZy50eHQ=&#125;|&#123;base64,-d&#125;|&#123;bash,-i&#125;</span><br></pre></td></tr></table></figure>
+
+<p>我们对这个 payload 进行从左至右的分析</p>
+<p>首先 <code>bash -c</code> 同我们之前分析所用的 <code>/bin/sh -c</code> 是一样的道理，只不过调用的环境不一样</p>
+<p><img src="/2021/01/04/%E6%B5%85%E6%9E%90-Java-%E5%91%BD%E4%BB%A4%E6%89%A7%E8%A1%8C/image-20210105230506285.png" alt="image-20210105230506285"></p>
+<p>接着我们分析 <code>&#123;echo,ZWNobyBmbGFnID4gZmxhZy50eHQ=&#125;|&#123;base64,-d&#125;</code></p>
+<p>其实就是 大括号 + 管道符 的利用，核心目的是为了绕过空格的限制从而避免被 <code>StringTokenizer</code> 处理</p>
+<p><img src="/2021/01/04/%E6%B5%85%E6%9E%90-Java-%E5%91%BD%E4%BB%A4%E6%89%A7%E8%A1%8C/image-20210105231756910.png" alt="image-20210105231756910"></p>
+<p>接着分析</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line"><span class="built_in">echo</span> flag &gt; flag.txt|&#123;bash,-i&#125;</span><br></pre></td></tr></table></figure>
+
+<p><code>bash -i</code> 常见用于反弹shell中，其核心是 <code>-i</code> 这个参数表示的是产生交互式的shell</p>
+<p><img src="/2021/01/04/%E6%B5%85%E6%9E%90-Java-%E5%91%BD%E4%BB%A4%E6%89%A7%E8%A1%8C/1.gif" alt="1"></p>
+<p>再延伸一下思路：</p>
+<p>经过上面的分析其实我们知道核心思路就是一个 bypass 符号的问题</p>
+<p><img src="/2021/01/04/%E6%B5%85%E6%9E%90-Java-%E5%91%BD%E4%BB%A4%E6%89%A7%E8%A1%8C/image-20210106145037368.png" alt="image-20210106145037368"></p>
+<p>我们的目的也就是用 shell 能识别但是不会被 <code>StringTokenizer</code> 切割的</p>
+<p>想想 CTF 中最常见的 bypass 空格的方式 <code>$&#123;IFS&#125;</code></p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line">Process  procdemo = Runtime.getRuntime().exec(<span class="string">&quot;bash echo$&#123;IFS&#125;flag&gt;flag.txt&quot;</span>);</span><br></pre></td></tr></table></figure>
+
+<p><img src="/2021/01/04/%E6%B5%85%E6%9E%90-Java-%E5%91%BD%E4%BB%A4%E6%89%A7%E8%A1%8C/image-20210106145538593.png" alt="image-20210106145538593"></p>
+<p>根据最后传参格式来看是可以执行的</p>
+<p>但是本地为 MacOS 环境，无法测试最终结果<img src="/2021/01/04/%E6%B5%85%E6%9E%90-Java-%E5%91%BD%E4%BB%A4%E6%89%A7%E8%A1%8C/image-20210104221719003.png"></p>
+<h1 id="End"><a href="#End" class="headerlink" title="End"></a>End</h1><p>在后面调试的  <code>ProcessBuilder#start()</code> 过程中看到了 @李三 师傅的文章：<a target="_blank" rel="noopener" href="https://xz.aliyun.com/t/7046">https://xz.aliyun.com/t/7046</a> 以及 @threedr3am 师傅的评论。</p>
+<p>写的太细了，本来我已经没有任何补充空间了，但是还是重新写了一遍，我觉得写点东西才能沉淀下来</p>
+<p><img src="/2021/01/04/%E6%B5%85%E6%9E%90-Java-%E5%91%BD%E4%BB%A4%E6%89%A7%E8%A1%8C/image-20210105183122187.png" alt="image-20210105183122187"></p>
+<p>REF：</p>
+<p><a target="_blank" rel="noopener" href="https://xz.aliyun.com/t/7046">https://xz.aliyun.com/t/7046</a></p>
+<p><a target="_blank" rel="noopener" href="https://www.anquanke.com/post/id/221159">https://www.anquanke.com/post/id/221159</a></p>
+<p><a target="_blank" rel="noopener" href="https://mp.weixin.qq.com/s/pzpc44-xH932M4eCJ8LxYg">https://mp.weixin.qq.com/s/pzpc44-xH932M4eCJ8LxYg</a></p>
+
+  </div>
+</article>
+
+
+
+        
+          <div id="footer-post-container">
+  <div id="footer-post">
+
+    <div id="nav-footer" style="display: none">
+      <ul>
+         
+          <li><a href="/">首页</a></li>
+         
+          <li><a href="/archives/">文章</a></li>
+         
+          <li><a href="/search/">搜索</a></li>
+        
+      </ul>
+    </div>
+
+    <div id="toc-footer" style="display: none">
+      <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#Preface"><span class="toc-number">1.</span> <span class="toc-text">Preface</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#How-to-Command-execution"><span class="toc-number">2.</span> <span class="toc-text">How to Command execution</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#java-lang-Runtime-exec"><span class="toc-number">2.1.</span> <span class="toc-text">java.lang.Runtime#exec()</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#java-lang-ProcessBuilder-start"><span class="toc-number">2.2.</span> <span class="toc-text">java.lang.ProcessBuilder#start()</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#java-lang-ProcessImpl"><span class="toc-number">2.3.</span> <span class="toc-text">java.lang.ProcessImpl</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#How-to-getshell-by-java-lang-Runtime-exec"><span class="toc-number">3.</span> <span class="toc-text">How to getshell by java.lang.Runtime#exec()</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#getshell"><span class="toc-number">3.1.</span> <span class="toc-text">getshell</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#wget-and-curl"><span class="toc-number">3.2.</span> <span class="toc-text">wget and curl</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#String-cmdarray"><span class="toc-number">3.3.</span> <span class="toc-text">String[] cmdarray</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#String-command-base64encode"><span class="toc-number">3.4.</span> <span class="toc-text">String command + base64encode</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#End"><span class="toc-number">4.</span> <span class="toc-text">End</span></a></li></ol>
+    </div>
+
+    <div id="share-footer" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=http://yoursite.com/2021/01/04/%E6%B5%85%E6%9E%90-Java-%E5%91%BD%E4%BB%A4%E6%89%A7%E8%A1%8C/"><i class="fab fa-facebook fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=http://yoursite.com/2021/01/04/%E6%B5%85%E6%9E%90-Java-%E5%91%BD%E4%BB%A4%E6%89%A7%E8%A1%8C/&text=浅析 Java 命令执行"><i class="fab fa-twitter fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=http://yoursite.com/2021/01/04/%E6%B5%85%E6%9E%90-Java-%E5%91%BD%E4%BB%A4%E6%89%A7%E8%A1%8C/&title=浅析 Java 命令执行"><i class="fab fa-linkedin fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=http://yoursite.com/2021/01/04/%E6%B5%85%E6%9E%90-Java-%E5%91%BD%E4%BB%A4%E6%89%A7%E8%A1%8C/&is_video=false&description=浅析 Java 命令执行"><i class="fab fa-pinterest fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=浅析 Java 命令执行&body=Check out this article: http://yoursite.com/2021/01/04/%E6%B5%85%E6%9E%90-Java-%E5%91%BD%E4%BB%A4%E6%89%A7%E8%A1%8C/"><i class="fas fa-envelope fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=http://yoursite.com/2021/01/04/%E6%B5%85%E6%9E%90-Java-%E5%91%BD%E4%BB%A4%E6%89%A7%E8%A1%8C/&title=浅析 Java 命令执行"><i class="fab fa-get-pocket fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=http://yoursite.com/2021/01/04/%E6%B5%85%E6%9E%90-Java-%E5%91%BD%E4%BB%A4%E6%89%A7%E8%A1%8C/&title=浅析 Java 命令执行"><i class="fab fa-reddit fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=http://yoursite.com/2021/01/04/%E6%B5%85%E6%9E%90-Java-%E5%91%BD%E4%BB%A4%E6%89%A7%E8%A1%8C/&title=浅析 Java 命令执行"><i class="fab fa-stumbleupon fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=http://yoursite.com/2021/01/04/%E6%B5%85%E6%9E%90-Java-%E5%91%BD%E4%BB%A4%E6%89%A7%E8%A1%8C/&title=浅析 Java 命令执行"><i class="fab fa-digg fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=http://yoursite.com/2021/01/04/%E6%B5%85%E6%9E%90-Java-%E5%91%BD%E4%BB%A4%E6%89%A7%E8%A1%8C/&name=浅析 Java 命令执行&description=&lt;p&gt;对 Java 命令执行过程中的流程以及利用坑点进行学习分析&lt;/p&gt;"><i class="fab fa-tumblr fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=http://yoursite.com/2021/01/04/%E6%B5%85%E6%9E%90-Java-%E5%91%BD%E4%BB%A4%E6%89%A7%E8%A1%8C/&t=浅析 Java 命令执行"><i class="fab fa-hacker-news fa-lg" aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+
+    <div id="actions-footer">
+        <a id="menu" class="icon" href="#" onclick="$('#nav-footer').toggle();return false;"><i class="fas fa-bars fa-lg" aria-hidden="true"></i> 菜单</a>
+        <a id="toc" class="icon" href="#" onclick="$('#toc-footer').toggle();return false;"><i class="fas fa-list fa-lg" aria-hidden="true"></i> 目录</a>
+        <a id="share" class="icon" href="#" onclick="$('#share-footer').toggle();return false;"><i class="fas fa-share-alt fa-lg" aria-hidden="true"></i> 分享</a>
+        <a id="top" style="display:none" class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fas fa-chevron-up fa-lg" aria-hidden="true"></i> 返回顶部</a>
+    </div>
+
+  </div>
+</div>
+
+        
+        <footer id="footer">
+  <div class="footer-left">
+    Copyright &copy; 2021 M13n
+  </div>
+  <div class="footer-right">
+    <nav>
+      <ul>
+         
+          <li><a href="/">首页</a></li>
+         
+          <li><a href="/archives/">文章</a></li>
+         
+          <li><a href="/search/">搜索</a></li>
+        
+      </ul>
+    </nav>
+  </div>
+</footer>
+
+    </div>
+    <!-- styles -->
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+
+<link rel="stylesheet" href="/lib/justified-gallery/css/justifiedGallery.min.css">
+
+
+    <!-- jquery -->
+
+<script src="/lib/jquery/jquery.min.js"></script>
+
+
+<script src="/lib/justified-gallery/js/jquery.justifiedGallery.min.js"></script>
+
+<!-- clipboard -->
+
+  
+<script src="/lib/clipboard/clipboard.min.js"></script>
+
+  <script type="text/javascript">
+  $(function() {
+    // copy-btn HTML
+    var btn = "<span class=\"btn-copy tooltipped tooltipped-sw\" aria-label=\"复制到粘贴板!\">";
+    btn += '<i class="far fa-clone"></i>';
+    btn += '</span>'; 
+    // mount it!
+    $(".highlight table").before(btn);
+    var clip = new ClipboardJS('.btn-copy', {
+      text: function(trigger) {
+        return Array.from(trigger.nextElementSibling.querySelectorAll('.code')).reduce((str,it)=>str+it.innerText+'\n','')
+      }
+    });
+    clip.on('success', function(e) {
+      e.trigger.setAttribute('aria-label', "复制成功!");
+      e.clearSelection();
+    })
+  })
+  </script>
+
+
+<script src="/js/main.js"></script>
+
+<!-- search -->
+
+<!-- Google Analytics -->
+
+<!-- Baidu Analytics -->
+
+<!-- Disqus Comments -->
+
+
+</body>
+</html>

